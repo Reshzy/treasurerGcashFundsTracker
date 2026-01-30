@@ -10,6 +10,7 @@ export default function TransactionForm({ fundId, senders = [], transaction = nu
     const { data, setData, post, put, processing, errors, reset } = useForm({
         fund_id: fundId,
         sender_id: transaction?.sender_id || '',
+        new_sender: null,
         amount: transaction?.amount || '',
         date: transaction?.date || new Date().toISOString().split('T')[0],
         notes: transaction?.notes || '',
@@ -45,9 +46,17 @@ export default function TransactionForm({ fundId, senders = [], transaction = nu
                 <SenderSelector
                     senders={senders}
                     value={data.sender_id}
-                    onChange={(value) => setData('sender_id', value)}
+                    onChange={(value) => {
+                        setData('sender_id', value);
+                        setData('new_sender', null);
+                    }}
+                    onNewSenderChange={(newSender) => {
+                        setData('new_sender', newSender);
+                        setData('sender_id', '');
+                    }}
+                    errors={errors}
                 />
-                <InputError message={errors.sender_id} className="mt-2" />
+                <InputError message={errors.sender_id || errors['new_sender.name'] || errors['new_sender.type'] || errors['new_sender.member_names']} className="mt-2" />
             </div>
 
             <div>
