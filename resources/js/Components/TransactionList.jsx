@@ -19,89 +19,65 @@ export default function TransactionList({ transactions, fundId, onEdit, onDelete
     }
 
     return (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                    <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Sender
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Category
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Amount
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Notes
-                        </th>
-                        {canEdit && (
-                            <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                                Actions
-                            </th>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {transactions.map((transaction) => (
+                <div
+                    key={transaction.id}
+                    className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+                >
+                    <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm text-gray-500">{transaction.date}</span>
+                        {transaction.category && (
+                            <span className="text-xs text-gray-400">{transaction.category}</span>
                         )}
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                    {transactions.map((transaction) => (
-                        <tr key={transaction.id} className="hover:bg-gray-50">
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                                {transaction.date}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                                <div className="flex items-center">
-                                    <span className="font-medium text-gray-900">
-                                        {transaction.sender.name}
-                                    </span>
-                                    {transaction.sender.type === 'group' && (
-                                        <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
-                                            Group
-                                        </span>
-                                    )}
-                                </div>
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                {transaction.category || '-'}
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-semibold text-green-600">
-                                {formatCurrency(transaction.amount)}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500">
-                                {transaction.notes ? (
-                                    <span className="line-clamp-2">
-                                        {transaction.notes}
-                                    </span>
-                                ) : (
-                                    '-'
-                                )}
-                            </td>
-                            {canEdit && (
-                                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                                    <div className="flex justify-end gap-2">
-                                        <PrimaryButton
-                                            onClick={() => onEdit(transaction)}
-                                            className="px-3 py-1 text-xs"
-                                        >
-                                            Edit
-                                        </PrimaryButton>
-                                        {onDelete && (
-                                            <DangerButton
-                                                onClick={() => onDelete(transaction.id)}
-                                                className="px-3 py-1 text-xs"
-                                            >
-                                                Delete
-                                            </DangerButton>
-                                        )}
-                                    </div>
-                                </td>
+                    </div>
+                    <div className="mt-2">
+                        <div className="flex items-center flex-wrap gap-1.5">
+                            <span className="font-medium text-gray-900">
+                                {transaction.sender.name}
+                            </span>
+                            {transaction.sender.type === 'group' && (
+                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                    Group
+                                </span>
                             )}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                        </div>
+                        {transaction.sender.type === 'group' &&
+                            transaction.sender.members &&
+                            transaction.sender.members.length > 0 && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                    {transaction.sender.members.join(', ')}
+                                </p>
+                            )}
+                    </div>
+                    <p className="mt-2 text-lg font-semibold text-green-600">
+                        {formatCurrency(transaction.amount)}
+                    </p>
+                    {transaction.notes && (
+                        <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                            {transaction.notes}
+                        </p>
+                    )}
+                    {canEdit && (
+                        <div className="mt-3 flex justify-end gap-2 border-t border-gray-100 pt-3">
+                            <PrimaryButton
+                                onClick={() => onEdit(transaction)}
+                                className="px-3 py-1 text-xs"
+                            >
+                                Edit
+                            </PrimaryButton>
+                            {onDelete && (
+                                <DangerButton
+                                    onClick={() => onDelete(transaction.id)}
+                                    className="px-3 py-1 text-xs"
+                                >
+                                    Delete
+                                </DangerButton>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
     );
 }

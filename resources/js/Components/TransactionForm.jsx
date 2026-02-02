@@ -9,7 +9,7 @@ import SenderSelector from './SenderSelector';
 export default function TransactionForm({ fundId, senders = [], savedMemberNames = [], transaction = null, onCancel }) {
     const { data, setData, post, put, processing, errors, reset } = useForm({
         fund_id: fundId,
-        sender_id: transaction?.sender_id || '',
+        sender_id: transaction?.sender?.id ?? transaction?.sender_id ?? '',
         new_sender: null,
         amount: transaction?.amount || '',
         date: transaction?.date || new Date().toISOString().split('T')[0],
@@ -19,7 +19,7 @@ export default function TransactionForm({ fundId, senders = [], savedMemberNames
 
     const submit = (e) => {
         e.preventDefault();
-        
+
         if (transaction) {
             put(route('transactions.update', transaction.id), {
                 preserveScroll: true,

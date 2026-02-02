@@ -73,7 +73,7 @@ class FundController extends Controller
      */
     public function show(string $id)
     {
-        $fund = Fund::with(['creator', 'members', 'transactions.sender', 'transactions.creator'])
+        $fund = Fund::with(['creator', 'members', 'transactions.sender.members', 'transactions.creator'])
             ->findOrFail($id);
 
         // Check if user has access
@@ -100,6 +100,9 @@ class FundController extends Controller
                         'id' => $transaction->sender->id,
                         'name' => $transaction->sender->name,
                         'type' => $transaction->sender->type,
+                        'members' => $transaction->sender->type === 'group'
+                            ? $transaction->sender->members->pluck('name')->values()->all()
+                            : [],
                     ],
                     'created_by' => $transaction->creator->name,
                     'created_at' => $transaction->created_at->format('Y-m-d H:i'),
