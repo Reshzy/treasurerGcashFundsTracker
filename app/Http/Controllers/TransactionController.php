@@ -160,13 +160,66 @@ class TransactionController extends Controller
             abort(403, 'You do not have access to this transaction.');
         }
 
-        $validated = $request->validate([
+        $rules = [
             'sender_id' => 'required|exists:senders,id',
             'amount' => 'required|numeric|min:0.01|max:999999.99',
             'date' => 'required|date|before_or_equal:today',
             'notes' => 'nullable|string',
             'category' => 'nullable|string|max:255',
-        ]);
+        ];
+
+        if ($request->has('edit_sender') && $request->edit_sender !== null) {
+            $rules['edit_sender'] = 'nullable|array';
+            $rules['edit_sender.name'] = 'required_with:edit_sender|string|max:255';
+            $rules['edit_sender.type'] = 'required_with:edit_sender|in:individual,group';
+            $rules['edit_sender.member_names'] = 'required_if:edit_sender.type,group|array|min:1';
+            $rules['edit_sender.member_names.*'] = 'required|string|max:255';
+        }
+
+        $validated = $request->validate($rules);
+
+        // Only accept edit_sender when editing the same sender in place and user created the sender
+        $sender = Sender::findOrFail($validated['sender_id']);
+        if (isset($validated['edit_sender']) && $validated['edit_sender'] !== null) {
+            if ((int) $validated['sender_id'] !== (int) $transaction->sender_id) {
+                throw ValidationException::withMessages([
+                    'edit_sender' => ['You can only edit the sender when keeping the same sender.'],
+                ]);
+            }
+            if ($sender->created_by !== $user->id) {
+                abort(403, 'You do not have permission to edit this sender.');
+            }
+
+            $editSender = $validated['edit_sender'];
+            $sender->update([
+                'name' => $editSender['name'],
+                'type' => $editSender['type'],
+            ]);
+
+            if ($editSender['type'] === 'individual') {
+                $placeholderUser = User::firstOrCreate(
+                    ['name' => $editSender['name'], 'email' => null],
+                    ['password' => null]
+                );
+                $sender->members()->sync([$placeholderUser->id]);
+            } else {
+                $memberUserIds = [];
+                foreach ($editSender['member_names'] as $memberName) {
+                    $memberUser = User::firstOrCreate(
+                        ['name' => $memberName, 'email' => null],
+                        ['password' => null]
+                    );
+                    $memberUserIds[] = $memberUser->id;
+                }
+                $sender->members()->sync($memberUserIds);
+                foreach ($editSender['member_names'] as $memberName) {
+                    SavedMemberName::firstOrCreate(
+                        ['user_id' => $user->id, 'name' => trim($memberName)],
+                        ['user_id' => $user->id, 'name' => trim($memberName)]
+                    );
+                }
+            }
+        }
 
         // Trap: duplicate transaction (same fund, sender, date, amount, excluding current)
         if (Transaction::where('fund_id', $fund->id)
@@ -180,7 +233,13 @@ class TransactionController extends Controller
             ]);
         }
 
-        $transaction->update($validated);
+        $transaction->update([
+            'sender_id' => $validated['sender_id'],
+            'amount' => $validated['amount'],
+            'date' => $validated['date'],
+            'notes' => $validated['notes'],
+            'category' => $validated['category'],
+        ]);
 
         return redirect()->route('funds.show', $fund->id)
             ->with('success', 'Transaction updated successfully.');

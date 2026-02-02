@@ -101,7 +101,7 @@ class FundController extends Controller
             ->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($transaction) {
+            ->map(function ($transaction) use ($user) {
                 return [
                     'id' => $transaction->id,
                     'amount' => $transaction->amount,
@@ -115,6 +115,7 @@ class FundController extends Controller
                         'members' => $transaction->sender->type === 'group'
                             ? $transaction->sender->members->pluck('name')->values()->all()
                             : [],
+                        'can_edit' => $transaction->sender->created_by === $user->id,
                     ],
                     'created_by' => $transaction->creator->name,
                     'created_at' => $transaction->created_at->format('Y-m-d H:i'),

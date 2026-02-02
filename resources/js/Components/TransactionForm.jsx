@@ -11,6 +11,7 @@ export default function TransactionForm({ fundId, senders = [], savedMemberNames
         fund_id: fundId,
         sender_id: transaction?.sender?.id ?? transaction?.sender_id ?? '',
         new_sender: null,
+        edit_sender: null,
         amount: transaction?.amount || '',
         date: transaction?.date || new Date().toISOString().split('T')[0],
         notes: transaction?.notes || '',
@@ -50,14 +51,19 @@ export default function TransactionForm({ fundId, senders = [], savedMemberNames
                     onChange={(value) => {
                         setData('sender_id', value);
                         setData('new_sender', null);
+                        setData('edit_sender', null);
                     }}
                     onNewSenderChange={(newSender) => {
                         setData('new_sender', newSender);
                         setData('sender_id', '');
+                        setData('edit_sender', null);
                     }}
+                    onEditSenderChange={transaction ? (editSender) => setData('edit_sender', editSender) : undefined}
+                    allowEditSender={!!transaction}
+                    senderForEdit={transaction?.sender}
                     errors={errors}
                 />
-                <InputError message={errors.sender_id || errors['new_sender.name'] || errors['new_sender.type'] || errors['new_sender.member_names']} className="mt-2" />
+                <InputError message={errors.sender_id || errors['new_sender.name'] || errors['new_sender.type'] || errors['new_sender.member_names'] || errors['edit_sender'] || errors['edit_sender.name'] || errors['edit_sender.type'] || errors['edit_sender.member_names']} className="mt-2" />
             </div>
 
             <div>
