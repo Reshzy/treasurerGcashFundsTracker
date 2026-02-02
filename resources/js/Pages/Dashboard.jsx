@@ -38,6 +38,16 @@ export default function Dashboard({ funds, totalFunds, totalAmount }) {
         }).format(amount);
     };
 
+    const [now, setNow] = useState(() => new Date());
+
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            setNow(new Date());
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+    }, []);
+
     const container = {
         hidden: { opacity: 0 },
         show: {
@@ -71,23 +81,44 @@ export default function Dashboard({ funds, totalFunds, totalAmount }) {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                        className="mb-10 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 text-white shadow-xl"
+                        className="mb-10 rounded-2xl bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 p-8 text-slate-900 shadow-xl dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-white"
                     >
-                        <div className="flex items-center gap-3 text-slate-300">
-                            <LayoutDashboard className="h-6 w-6" />
-                            <span className="text-sm font-medium uppercase tracking-wider">
-                                Total Balance
-                            </span>
+                        <div className="flex items-start justify-between gap-6">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+                                    <LayoutDashboard className="h-6 w-6" />
+                                    <span className="text-sm font-medium uppercase tracking-wider">
+                                        Total Balance
+                                    </span>
+                                </div>
+                                <p className="mt-2 text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
+                                    <AnimatedNumber
+                                        value={totalAmount}
+                                        format={(n) => formatCurrency(n)}
+                                    />
+                                </p>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                    Across all your funds
+                                </p>
+                            </div>
+
+                            <div className="text-right">
+                                <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                                    {now.toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                    })}
+                                </div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                    {now.toLocaleDateString(undefined, {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                    })}
+                                </div>
+                            </div>
                         </div>
-                        <p className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
-                            <AnimatedNumber
-                                value={totalAmount}
-                                format={(n) => formatCurrency(n)}
-                            />
-                        </p>
-                        <p className="mt-1 text-sm text-slate-400">
-                            Across all your funds
-                        </p>
                     </motion.div>
 
                     {/* Stats Row */}
