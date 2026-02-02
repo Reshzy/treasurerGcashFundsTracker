@@ -30,6 +30,7 @@ class FundController extends Controller
                     'creator' => $fund->creator->name,
                     'role' => $fund->pivot->role ?? 'owner',
                     'created_at' => $fund->created_at->format('Y-m-d'),
+                    'created_at_formatted' => $fund->created_at->format('M j, Y g:i A'),
                 ];
             });
 
@@ -52,7 +53,18 @@ class FundController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if (Fund::where('created_by', Auth::id())
+                        ->whereRaw('LOWER(name) = ?', [strtolower(trim($value))])
+                        ->exists()) {
+                        $fail('You already have a fund with this name.');
+                    }
+                },
+            ],
             'description' => 'nullable|string',
         ]);
 
@@ -106,19 +118,24 @@ class FundController extends Controller
                     ],
                     'created_by' => $transaction->creator->name,
                     'created_at' => $transaction->created_at->format('Y-m-d H:i'),
+                    'created_at_formatted' => $transaction->created_at->format('M j, Y g:i A'),
                 ];
             });
 
-        // Get senders for the transaction form
+        // Get senders for the transaction form (with members for group display)
         $senders = Sender::where('created_by', $user->id)
             ->orWhereHas('members', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })
+            ->with('members')
             ->get()
             ->map(fn($sender) => [
                 'id' => $sender->id,
                 'name' => $sender->name,
                 'type' => $sender->type,
+                'members' => $sender->type === 'group'
+                    ? $sender->members->pluck('name')->values()->all()
+                    : [],
             ]);
 
         $savedMemberNames = $user->savedMemberNames()->pluck('name')->values()->all();
@@ -149,7 +166,7 @@ class FundController extends Controller
      */
     public function edit(string $id)
     {
-        $fund = Fund::findOrFail($id);
+        $fund = Fund::with('members')->findOrFail($id);
         $user = Auth::user();
         
         $hasAccess = $fund->members()->where('user_id', $user->id)->where('role', 'owner')->exists()
@@ -160,7 +177,16 @@ class FundController extends Controller
         }
 
         return Inertia::render('Funds/Edit', [
-            'fund' => $fund,
+            'fund' => [
+                'id' => $fund->id,
+                'name' => $fund->name,
+                'description' => $fund->description,
+                'members' => $fund->members->map(fn($member) => [
+                    'id' => $member->id,
+                    'name' => $member->name,
+                    'role' => $member->pivot->role,
+                ]),
+            ],
         ]);
     }
 
@@ -180,7 +206,19 @@ class FundController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($fund) {
+                    if (Fund::where('created_by', Auth::id())
+                        ->where('id', '!=', $fund->id)
+                        ->whereRaw('LOWER(name) = ?', [strtolower(trim($value))])
+                        ->exists()) {
+                        $fail('You already have a fund with this name.');
+                    }
+                },
+            ],
             'description' => 'nullable|string',
         ]);
 

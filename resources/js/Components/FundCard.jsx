@@ -2,9 +2,9 @@ import { Link } from '@inertiajs/react';
 
 export default function FundCard({ fund }) {
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('en-PH', {
             style: 'currency',
-            currency: 'USD',
+            currency: 'PHP',
         }).format(amount);
     };
 
@@ -45,7 +45,7 @@ export default function FundCard({ fund }) {
             </div>
 
             <div className="mt-2 text-xs text-gray-500">
-                Created by {fund.creator} • {fund.created_at}
+                Created by {fund.creator} • {fund.created_at_formatted ?? fund.created_at}
             </div>
         </Link>
     );

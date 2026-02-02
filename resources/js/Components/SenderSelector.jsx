@@ -205,6 +205,22 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                             No senders found. Switch to "Create New" to add one.
                         </div>
                     )}
+
+                    {selectedSender && !showDropdown && (
+                        <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                            <span className="font-medium text-gray-700">{selectedSender.name}</span>
+                            {selectedSender.type === 'group' && (
+                                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                    Group
+                                </span>
+                            )}
+                            {selectedSender.type === 'group' && selectedSender.members?.length > 0 && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Members: {selectedSender.members.join(', ')}
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
             ) : (
                 /* Create New Sender */

@@ -4,9 +4,9 @@ import { router } from '@inertiajs/react';
 
 export default function TransactionList({ transactions, fundId, onEdit, onDelete, canEdit = true }) {
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('en-PH', {
             style: 'currency',
-            currency: 'USD',
+            currency: 'PHP',
         }).format(amount);
     };
 
@@ -26,7 +26,14 @@ export default function TransactionList({ transactions, fundId, onEdit, onDelete
                     className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
                 >
                     <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm text-gray-500">{transaction.date}</span>
+                        <div className="text-sm text-gray-500">
+                            <span>{transaction.date}</span>
+                            {transaction.created_at_formatted && (
+                                <span className="ml-2 block text-xs text-gray-400">
+                                    Added {transaction.created_at_formatted}
+                                </span>
+                            )}
+                        </div>
                         {transaction.category && (
                             <span className="text-xs text-gray-400">{transaction.category}</span>
                         )}

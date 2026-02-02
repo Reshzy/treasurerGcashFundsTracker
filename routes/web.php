@@ -4,6 +4,7 @@ use App\Http\Controllers\FundController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SenderController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +62,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     // Senders routes
     Route::resource('senders', SenderController::class);
+
+    // Users routes (admin CRUD)
+    Route::resource('users', UserController::class);
 
     // Transactions routes
     Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');

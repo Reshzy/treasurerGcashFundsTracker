@@ -30,6 +30,7 @@ class SenderController extends Controller
                     'creator' => $sender->creator->name,
                     'members' => $sender->members->map(fn($member) => $member->name),
                     'created_at' => $sender->created_at->format('Y-m-d'),
+                    'created_at_formatted' => $sender->created_at->format('M j, Y g:i A'),
                 ];
             });
 
@@ -55,7 +56,18 @@ class SenderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if (Sender::where('created_by', Auth::id())
+                        ->whereRaw('LOWER(name) = ?', [strtolower(trim($value))])
+                        ->exists()) {
+                        $fail('You already have a sender with this name.');
+                    }
+                },
+            ],
             'type' => 'required|in:individual,group',
             'member_ids' => 'required_if:type,group|array',
             'member_ids.*' => 'exists:users,id',
@@ -124,7 +136,19 @@ class SenderController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($sender) {
+                    if (Sender::where('created_by', Auth::id())
+                        ->where('id', '!=', $sender->id)
+                        ->whereRaw('LOWER(name) = ?', [strtolower(trim($value))])
+                        ->exists()) {
+                        $fail('You already have a sender with this name.');
+                    }
+                },
+            ],
             'type' => 'required|in:individual,group',
             'member_ids' => 'required_if:type,group|array',
             'member_ids.*' => 'exists:users,id',

@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class TransactionController extends Controller
 {
@@ -26,8 +27,8 @@ class TransactionController extends Controller
             'new_sender.type' => 'required_with:new_sender|in:individual,group',
             'new_sender.member_names' => 'required_if:new_sender.type,group|array|min:1',
             'new_sender.member_names.*' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
-            'date' => 'required|date',
+            'amount' => 'required|numeric|min:0.01|max:999999.99',
+            'date' => 'required|date|before_or_equal:today',
             'notes' => 'nullable|string',
             'category' => 'nullable|string|max:255',
         ]);
@@ -40,6 +41,24 @@ class TransactionController extends Controller
 
         if (!$hasAccess) {
             abort(403, 'You do not have access to this fund.');
+        }
+
+        // Trap: same sender name already in this fund (case-insensitive)
+        if ($request->has('new_sender')) {
+            $existingNames = $fund->transactions()
+                ->with('sender')
+                ->get()
+                ->pluck('sender.name')
+                ->filter()
+                ->map(fn ($n) => strtolower(trim($n)))
+                ->values()
+                ->all();
+            $newName = strtolower(trim($request->input('new_sender.name', '')));
+            if ($newName !== '' && in_array($newName, $existingNames)) {
+                throw ValidationException::withMessages([
+                    'new_sender.name' => 'A sender with this name already exists in this fund. Please select it from the list.',
+                ]);
+            }
         }
 
         // Handle sender creation if new_sender is provided
@@ -99,6 +118,17 @@ class TransactionController extends Controller
             }
         }
 
+        // Trap: duplicate transaction (same fund, sender, date, amount)
+        if (Transaction::where('fund_id', $fund->id)
+            ->where('sender_id', $senderId)
+            ->whereDate('date', $request->date)
+            ->where('amount', $request->amount)
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'amount' => 'A transaction with this sender, date, and amount already exists in this fund.',
+            ]);
+        }
+
         $transaction = Transaction::create([
             'fund_id' => $request->fund_id,
             'sender_id' => $senderId,
@@ -132,11 +162,23 @@ class TransactionController extends Controller
 
         $validated = $request->validate([
             'sender_id' => 'required|exists:senders,id',
-            'amount' => 'required|numeric|min:0.01',
-            'date' => 'required|date',
+            'amount' => 'required|numeric|min:0.01|max:999999.99',
+            'date' => 'required|date|before_or_equal:today',
             'notes' => 'nullable|string',
             'category' => 'nullable|string|max:255',
         ]);
+
+        // Trap: duplicate transaction (same fund, sender, date, amount, excluding current)
+        if (Transaction::where('fund_id', $fund->id)
+            ->where('sender_id', $validated['sender_id'])
+            ->whereDate('date', $validated['date'])
+            ->where('amount', $validated['amount'])
+            ->where('id', '!=', $transaction->id)
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'amount' => 'A transaction with this sender, date, and amount already exists in this fund.',
+            ]);
+        }
 
         $transaction->update($validated);
 

@@ -61,6 +61,25 @@ export default function Edit({ fund }) {
                                 <InputError message={errors.description} className="mt-2" />
                             </div>
 
+                            {fund.members?.length > 0 && (
+                                <div className="mt-4">
+                                    <InputLabel value="Fund members" />
+                                    <div className="mt-2 flex flex-wrap gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                                        {fund.members.map((member) => (
+                                            <span
+                                                key={member.id}
+                                                className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700"
+                                            >
+                                                {member.name}
+                                                <span className="ml-2 text-xs text-gray-500">
+                                                    ({member.role})
+                                                </span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="mt-6 flex items-center justify-end gap-4">
                                 <a
                                     href={route('funds.show', fund.id)}

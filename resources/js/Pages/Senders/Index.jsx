@@ -77,7 +77,7 @@ export default function Index({ senders }) {
                                                 {sender.creator}
                                             </td>
                                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                                {sender.created_at}
+                                                {sender.created_at_formatted ?? sender.created_at}
                                             </td>
                                         </tr>
                                     ))}
