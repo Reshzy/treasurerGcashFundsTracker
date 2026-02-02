@@ -23,7 +23,7 @@ export default function Edit({ user }) {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-slate-200">
                     Edit User
                 </h2>
             }
@@ -93,14 +93,14 @@ export default function Edit({ user }) {
                                         checked={data.is_admin}
                                         onChange={(e) => setData('is_admin', e.target.checked)}
                                     />
-                                    <span className="ml-2 text-sm text-gray-600">Admin</span>
+                                    <span className="ml-2 text-sm text-gray-600 dark:text-slate-300">Admin</span>
                                 </label>
                             </div>
 
                             <div className="mt-6 flex items-center justify-end gap-4">
                                 <a
                                     href={route('users.index')}
-                                    className="text-sm text-gray-600 underline hover:text-gray-900"
+                                    className="text-sm text-gray-600 underline hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200"
                                 >
                                     Cancel
                                 </a>

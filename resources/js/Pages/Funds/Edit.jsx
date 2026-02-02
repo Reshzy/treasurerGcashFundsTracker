@@ -19,7 +19,7 @@ export default function Edit({ fund }) {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-slate-200">
                     Edit Fund
                 </h2>
             }
@@ -28,7 +28,7 @@ export default function Edit({ fund }) {
 
             <div className="py-12">
                 <div className="mx-auto max-w-2xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-slate-800 dark:shadow-slate-900/50">
                         <form onSubmit={submit} className="p-6">
                             <div>
                                 <InputLabel htmlFor="name" value="Fund Name" />
@@ -53,7 +53,7 @@ export default function Edit({ fund }) {
                                     id="description"
                                     name="description"
                                     value={data.description}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                                     rows="4"
                                     onChange={(e) => setData('description', e.target.value)}
                                 />
@@ -64,14 +64,14 @@ export default function Edit({ fund }) {
                             {fund.members?.length > 0 && (
                                 <div className="mt-4">
                                     <InputLabel value="Fund members" />
-                                    <div className="mt-2 flex flex-wrap gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                                    <div className="mt-2 flex flex-wrap gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-slate-600 dark:bg-slate-700/50">
                                         {fund.members.map((member) => (
                                             <span
                                                 key={member.id}
-                                                className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700"
+                                                className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 dark:bg-slate-600 dark:text-slate-300"
                                             >
                                                 {member.name}
-                                                <span className="ml-2 text-xs text-gray-500">
+                                                <span className="ml-2 text-xs text-gray-500 dark:text-slate-400">
                                                     ({member.role})
                                                 </span>
                                             </span>
@@ -83,7 +83,7 @@ export default function Edit({ fund }) {
                             <div className="mt-6 flex items-center justify-end gap-4">
                                 <a
                                     href={route('funds.show', fund.id)}
-                                    className="text-sm text-gray-600 underline hover:text-gray-900"
+                                    className="text-sm text-gray-600 underline hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200"
                                 >
                                     Cancel
                                 </a>

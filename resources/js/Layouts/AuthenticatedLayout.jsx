@@ -13,8 +13,8 @@ export default function AuthenticatedLayout({ header, children }) {
         useState(false);
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans antialiased">
-            <nav className="border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm">
+        <div className="min-h-screen bg-slate-50 font-sans antialiased dark:bg-slate-900">
+            <nav className="border-b border-slate-200/60 bg-white/95 backdrop-blur-sm shadow-sm dark:border-slate-700/60 dark:bg-slate-800/95">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
@@ -177,10 +177,10 @@ export default function AuthenticatedLayout({ header, children }) {
 
                     <div className="border-t border-gray-200 pb-1 pt-4">
                         <div className="px-4">
-                            <div className="text-base font-medium text-slate-800">
+                            <div className="text-base font-medium text-slate-800 dark:text-slate-200">
                                 {user.name}
                             </div>
-                            <div className="text-sm font-medium text-slate-500">
+                            <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
                                 {user.email}
                             </div>
                         </div>

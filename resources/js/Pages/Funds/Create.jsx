@@ -19,7 +19,7 @@ export default function Create() {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-slate-200">
                     Create Fund
                 </h2>
             }
@@ -28,7 +28,7 @@ export default function Create() {
 
             <div className="py-12">
                 <div className="mx-auto max-w-2xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-slate-800 dark:shadow-slate-900/50">
                         <form onSubmit={submit} className="p-6">
                             <div>
                                 <InputLabel htmlFor="name" value="Fund Name" />
@@ -53,7 +53,7 @@ export default function Create() {
                                     id="description"
                                     name="description"
                                     value={data.description}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                                     rows="4"
                                     onChange={(e) => setData('description', e.target.value)}
                                 />
@@ -64,7 +64,7 @@ export default function Create() {
                             <div className="mt-6 flex items-center justify-end gap-4">
                                 <a
                                     href={route('funds.index')}
-                                    className="text-sm text-gray-600 underline hover:text-gray-900"
+                                    className="text-sm text-gray-600 underline hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200"
                                 >
                                     Cancel
                                 </a>

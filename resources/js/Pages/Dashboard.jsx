@@ -99,7 +99,7 @@ export default function Dashboard({ funds, totalFunds, totalAmount }) {
                     >
                         <motion.div
                             variants={item}
-                            className="group overflow-hidden rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                            className="group overflow-hidden rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700/80 dark:bg-slate-800"
                         >
                             <div className="flex items-center justify-between">
                                 <div>
@@ -110,25 +110,25 @@ export default function Dashboard({ funds, totalFunds, totalAmount }) {
                                         {totalFunds}
                                     </p>
                                 </div>
-                                <div className="rounded-xl bg-accent-100 p-3 text-accent-600 transition-colors group-hover:bg-accent-200">
+                                <div className="rounded-xl bg-accent-100 p-3 text-accent-600 transition-colors group-hover:bg-accent-200 dark:bg-accent-900/50 dark:text-accent-300 dark:group-hover:bg-accent-900/70">
                                     <Wallet className="h-8 w-8" />
                                 </div>
                             </div>
                         </motion.div>
                         <motion.div
                             variants={item}
-                            className="group overflow-hidden rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                            className="group overflow-hidden rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700/80 dark:bg-slate-800"
                         >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                                         Total Amount
                                     </p>
-                                    <p className="mt-2 text-3xl font-bold text-accent-600">
+                                    <p className="mt-2 text-3xl font-bold text-accent-600 dark:text-accent-400">
                                         {formatCurrency(totalAmount)}
                                     </p>
                                 </div>
-                                <div className="rounded-xl bg-accent-100 p-3 text-accent-600 transition-colors group-hover:bg-accent-200">
+                                <div className="rounded-xl bg-accent-100 p-3 text-accent-600 transition-colors group-hover:bg-accent-200 dark:bg-accent-900/50 dark:text-accent-300 dark:group-hover:bg-accent-900/70">
                                     <PiggyBank className="h-8 w-8" />
                                 </div>
                             </div>

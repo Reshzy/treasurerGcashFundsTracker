@@ -8,7 +8,7 @@ export default function Index({ funds }) {
         <AuthenticatedLayout
             header={
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-slate-200">
                         Funds
                     </h2>
                     <Link href={route('funds.create')}>
@@ -22,8 +22,8 @@ export default function Index({ funds }) {
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     {funds.length === 0 ? (
-                        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-                            <p className="text-lg text-gray-500">
+                        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
+                            <p className="text-lg text-gray-500 dark:text-slate-400">
                                 No funds yet. Create your first fund to get started.
                             </p>
                             <Link href={route('funds.create')} className="mt-4 inline-block">

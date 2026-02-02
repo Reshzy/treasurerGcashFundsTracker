@@ -23,7 +23,7 @@ export default function Create() {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-slate-200">
                     Create User
                 </h2>
             }
@@ -32,7 +32,7 @@ export default function Create() {
 
             <div className="py-12">
                 <div className="mx-auto max-w-2xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-slate-800 dark:shadow-slate-900/50">
                         <form onSubmit={submit} className="p-6">
                             <div>
                                 <InputLabel htmlFor="name" value="Name" />
@@ -93,14 +93,14 @@ export default function Create() {
                                         checked={data.is_admin}
                                         onChange={(e) => setData('is_admin', e.target.checked)}
                                     />
-                                    <span className="ml-2 text-sm text-gray-600">Admin</span>
+                                    <span className="ml-2 text-sm text-gray-600 dark:text-slate-300">Admin</span>
                                 </label>
                             </div>
 
                             <div className="mt-6 flex items-center justify-end gap-4">
                                 <a
                                     href={route('users.index')}
-                                    className="text-sm text-gray-600 underline hover:text-gray-900"
+                                    className="text-sm text-gray-600 underline hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200"
                                 >
                                     Cancel
                                 </a>
