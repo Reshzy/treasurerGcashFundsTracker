@@ -6,6 +6,11 @@
         "build": "vite build",
         "dev": "vite"
     },
+    "dependencies": {
+        "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
+        "lucide-react": "^0.563.0",
+        "motion": "^12.29.2"
+    },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
         "@inertiajs/react": "^2.0.0",

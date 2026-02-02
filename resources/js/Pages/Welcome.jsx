@@ -1,3 +1,4 @@
+import ThemeToggle from '@/Components/ThemeToggle';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Welcome({ auth, laravelVersion, phpVersion }) {
@@ -37,7 +38,8 @@ export default function Welcome({ auth, laravelVersion, phpVersion }) {
                                     />
                                 </svg>
                             </div>
-                            <nav className="-mx-3 flex flex-1 justify-end">
+                            <nav className="-mx-3 flex flex-1 items-center justify-end gap-2">
+                                <ThemeToggle />
                                 {auth.user ? (
                                     <Link
                                         href={route('dashboard')}

@@ -32,7 +32,10 @@ Route::get('/dashboard', function () {
                 'description' => $fund->description,
                 'total' => $fund->total,
                 'transaction_count' => $fund->transactions_count,
+                'creator' => $fund->creator->name,
                 'role' => $fund->pivot->role ?? 'owner',
+                'created_at' => $fund->created_at->format('Y-m-d'),
+                'created_at_formatted' => $fund->created_at->format('M j, Y g:i A'),
             ];
         })
         ->take(5); // Show only top 5 funds
@@ -50,6 +53,10 @@ Route::get('/dashboard', function () {
 Route::get('/unauthorized', function () {
     return Inertia::render('Unauthorized');
 })->middleware('auth')->name('unauthorized');
+
+Route::middleware(['auth'])->group(function () {
+    Route::patch('/profile/theme', [ProfileController::class, 'updateTheme'])->name('profile.theme.update');
+});
 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

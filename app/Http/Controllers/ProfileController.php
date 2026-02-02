@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Requests\ThemeUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +40,18 @@ class ProfileController extends Controller
         $request->user()->save();
 
         return Redirect::route('profile.edit');
+    }
+
+    /**
+     * Update the user's theme preference.
+     */
+    public function updateTheme(ThemeUpdateRequest $request): JsonResponse
+    {
+        $request->user()->update([
+            'theme_preference' => $request->validated('theme'),
+        ]);
+
+        return response()->json(['theme' => $request->validated('theme')]);
     }
 
     /**
