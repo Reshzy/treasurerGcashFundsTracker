@@ -14,7 +14,7 @@ export default function AuthenticatedLayout({ header, children }) {
         useState(false);
 
     return (
-        <div className="min-h-screen bg-slate-50/70 font-sans antialiased dark:bg-slate-900/70">
+        <div className="min-h-screen bg-slate-50/70 font-sans antialiased dark:bg-slate-950/85">
             <AnimatedBackground />
             <nav className="border-b border-slate-200/60 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

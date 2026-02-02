@@ -5,7 +5,7 @@ import { Link } from '@inertiajs/react';
 
 export default function GuestLayout({ children }) {
     return (
-        <div className="relative flex min-h-screen flex-col items-center bg-gray-100/70 pt-6 sm:justify-center sm:pt-0 dark:bg-slate-900/70">
+        <div className="relative flex min-h-screen flex-col items-center bg-gray-100/70 pt-6 sm:justify-center sm:pt-0 dark:bg-slate-950/85">
             <AnimatedBackground />
             <div className="flex w-full max-w-md items-center justify-between px-4 sm:px-0">
                 <Link href="/">
