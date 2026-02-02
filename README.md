@@ -7,6 +7,10 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Admin access
+
+Only users with `is_admin = true` can use the application (dashboard, funds, senders, transactions). Non-admin users are redirected to an Unauthorized page after login. To promote the first admin, run: `UPDATE users SET is_admin = 1 WHERE id = ?;` (replace `?` with the user's id). The database seeder creates one user with `is_admin => true` when you run `php artisan db:seed`.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

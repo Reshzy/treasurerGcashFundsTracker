@@ -118,6 +118,8 @@ class FundController extends Controller
                 'type' => $sender->type,
             ]);
 
+        $savedMemberNames = $user->savedMemberNames()->pluck('name')->values()->all();
+
         return Inertia::render('Funds/Show', [
             'fund' => [
                 'id' => $fund->id,
@@ -135,6 +137,7 @@ class FundController extends Controller
             ],
             'transactions' => $transactions,
             'senders' => $senders,
+            'savedMemberNames' => $savedMemberNames,
         ]);
     }
 

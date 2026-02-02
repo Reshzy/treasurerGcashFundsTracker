@@ -3,7 +3,7 @@ import TextInput from './TextInput';
 import InputLabel from './InputLabel';
 import PrimaryButton from './PrimaryButton';
 
-export default function SenderSelector({ senders = [], value, onChange, onNewSenderChange, errors = {} }) {
+export default function SenderSelector({ senders = [], savedMemberNames = [], value, onChange, onNewSenderChange, errors = {} }) {
     const [mode, setMode] = useState(value ? 'select' : 'select'); // 'select' or 'create'
     const [searchTerm, setSearchTerm] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
@@ -78,6 +78,30 @@ export default function SenderSelector({ senders = [], value, onChange, onNewSen
                 onNewSenderChange(null);
             }
         }, 0);
+    };
+
+    const handleAddSavedName = (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const currentTrimmed = memberNames.map((n) => n.trim()).filter(Boolean);
+        if (currentTrimmed.includes(trimmed)) return;
+        let newMemberNames;
+        const emptyIdx = memberNames.findIndex((n) => !n.trim());
+        if (emptyIdx >= 0) {
+            newMemberNames = [...memberNames];
+            newMemberNames[emptyIdx] = trimmed;
+        } else {
+            newMemberNames = [...memberNames, trimmed];
+        }
+        setMemberNames(newMemberNames);
+        const validMembers = newMemberNames.map((n) => n.trim()).filter(Boolean);
+        if (newSenderName.trim() && validMembers.length > 0) {
+            onNewSenderChange({
+                name: newSenderName.trim(),
+                type: 'group',
+                member_names: validMembers,
+            });
+        }
     };
 
     const handleNewSenderUpdate = () => {
@@ -291,6 +315,27 @@ export default function SenderSelector({ senders = [], value, onChange, onNewSen
                                     Add Member
                                 </PrimaryButton>
                             </div>
+                            {savedMemberNames.length > 0 && (
+                                <div className="mt-2">
+                                    <p className="mb-1.5 text-xs text-gray-500">Saved names (click to add)</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {savedMemberNames.map((savedName) => {
+                                            const alreadyAdded = memberNames.map((n) => n.trim()).filter(Boolean).includes(savedName.trim());
+                                            return (
+                                                <button
+                                                    key={savedName}
+                                                    type="button"
+                                                    onClick={() => handleAddSavedName(savedName)}
+                                                    disabled={alreadyAdded}
+                                                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    {savedName}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                             <div className="mt-2 space-y-2">
                                 {memberNames.map((name, index) => (
                                     <div key={index} className="flex gap-2">

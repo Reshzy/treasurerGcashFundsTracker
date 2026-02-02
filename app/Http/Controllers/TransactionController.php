@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Fund;
+use App\Models\SavedMemberName;
 use App\Models\Sender;
 use App\Models\Transaction;
 use App\Models\User;
@@ -85,6 +86,15 @@ class TransactionController extends Controller
 
                 // Link all member users to sender
                 $sender->members()->sync($memberUserIds);
+
+                // Save member names for reuse in later funds
+                foreach ($newSender['member_names'] as $memberName) {
+                    SavedMemberName::firstOrCreate(
+                        ['user_id' => $user->id, 'name' => trim($memberName)],
+                        ['user_id' => $user->id, 'name' => trim($memberName)]
+                    );
+                }
+
                 $senderId = $sender->id;
             }
         }

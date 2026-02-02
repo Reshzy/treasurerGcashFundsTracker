@@ -7,7 +7,7 @@ import DangerButton from '@/Components/DangerButton';
 import Modal from '@/Components/Modal';
 import { Head, Link, router } from '@inertiajs/react';
 
-export default function Show({ fund, transactions, senders }) {
+export default function Show({ fund, transactions, senders, savedMemberNames = [] }) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
 
@@ -127,6 +127,7 @@ export default function Show({ fund, transactions, senders }) {
                     <TransactionForm
                         fundId={fund.id}
                         senders={senders}
+                        savedMemberNames={savedMemberNames}
                         transaction={editingTransaction}
                         onCancel={() => {
                             setShowAddModal(false);

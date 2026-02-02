@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SavedMemberName;
 use App\Models\Sender;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -65,9 +67,16 @@ class SenderController extends Controller
             'created_by' => Auth::id(),
         ]);
 
-        // If it's a group, attach members
+        // If it's a group, attach members and save member names for reuse
         if ($validated['type'] === 'group' && isset($validated['member_ids'])) {
             $sender->members()->attach($validated['member_ids']);
+            $memberNames = User::whereIn('id', $validated['member_ids'])->pluck('name');
+            foreach ($memberNames as $name) {
+                SavedMemberName::firstOrCreate(
+                    ['user_id' => Auth::id(), 'name' => $name],
+                    ['user_id' => Auth::id(), 'name' => $name]
+                );
+            }
         }
 
         return redirect()->route('senders.index')
@@ -126,9 +135,16 @@ class SenderController extends Controller
             'type' => $validated['type'],
         ]);
 
-        // Update members if it's a group
+        // Update members if it's a group and save member names for reuse
         if ($validated['type'] === 'group' && isset($validated['member_ids'])) {
             $sender->members()->sync($validated['member_ids']);
+            $memberNames = User::whereIn('id', $validated['member_ids'])->pluck('name');
+            foreach ($memberNames as $name) {
+                SavedMemberName::firstOrCreate(
+                    ['user_id' => Auth::id(), 'name' => $name],
+                    ['user_id' => Auth::id(), 'name' => $name]
+                );
+            }
         } else {
             $sender->members()->detach();
         }

@@ -6,7 +6,7 @@ import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import SenderSelector from './SenderSelector';
 
-export default function TransactionForm({ fundId, senders = [], transaction = null, onCancel }) {
+export default function TransactionForm({ fundId, senders = [], savedMemberNames = [], transaction = null, onCancel }) {
     const { data, setData, post, put, processing, errors, reset } = useForm({
         fund_id: fundId,
         sender_id: transaction?.sender_id || '',
@@ -45,6 +45,7 @@ export default function TransactionForm({ fundId, senders = [], transaction = nu
                 <InputLabel htmlFor="sender_id" value="Sender" />
                 <SenderSelector
                     senders={senders}
+                    savedMemberNames={savedMemberNames}
                     value={data.sender_id}
                     onChange={(value) => {
                         setData('sender_id', value);
