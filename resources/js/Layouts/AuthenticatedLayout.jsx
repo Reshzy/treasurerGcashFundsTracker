@@ -2,6 +2,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
+import AnimatedBackground from '@/Components/AnimatedBackground';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
@@ -13,7 +14,8 @@ export default function AuthenticatedLayout({ header, children }) {
         useState(false);
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans antialiased dark:bg-slate-900">
+        <div className="min-h-screen bg-slate-50/70 font-sans antialiased dark:bg-slate-900/70">
+            <AnimatedBackground />
             <nav className="border-b border-slate-200/60 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
