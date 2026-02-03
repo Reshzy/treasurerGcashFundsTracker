@@ -188,7 +188,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
     };
 
     const renderEditSenderForm = () => (
-        <div className="space-y-4 rounded-md border border-gray-300 bg-gray-50 p-4">
+        <div className="space-y-4 rounded-md border border-gray-300 bg-gray-50 p-4 dark:border-slate-600 dark:bg-slate-700/50">
             {/* Sender Type */}
             <div>
                 <InputLabel value="Sender Type" />
@@ -220,7 +220,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                             }}
                             className="mr-2"
                         />
-                        <span>Individual</span>
+                        <span className="dark:text-slate-200">Individual</span>
                     </label>
                     <label className="flex items-center">
                         <input
@@ -236,7 +236,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                             }}
                             className="mr-2"
                         />
-                        <span>Group</span>
+                        <span className="dark:text-slate-200">Group</span>
                     </label>
                 </div>
             </div>
@@ -295,7 +295,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                     </div>
                     {savedMemberNames.length > 0 && (
                         <div className="mt-2">
-                            <p className="mb-1.5 text-xs text-gray-500">Saved names (click to add)</p>
+                            <p className="mb-1.5 text-xs text-gray-500 dark:text-slate-400">Saved names (click to add)</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {savedMemberNames.map((savedName) => {
                                     const alreadyAdded = memberNames.map((n) => n.trim()).filter(Boolean).includes(savedName.trim());
@@ -305,7 +305,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                                             type="button"
                                             onClick={() => handleAddSavedName(savedName)}
                                             disabled={alreadyAdded}
-                                            className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500"
                                         >
                                             {savedName}
                                         </button>
@@ -332,7 +332,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                                         onClick={() => {
                                             handleRemoveMember(index);
                                         }}
-                                        className="rounded-md border border-red-300 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-50"
+                                        className="rounded-md border border-red-300 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-slate-600 dark:text-red-300 dark:hover:bg-slate-500"
                                     >
                                         Remove
                                     </button>
@@ -350,21 +350,21 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
         if (!senderForEdit.can_edit) {
             return (
                 <div className="space-y-4">
-                    <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                        <span className="font-medium text-gray-700">{senderForEdit.name}</span>
+                    <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700/50">
+                        <span className="font-medium text-gray-700 dark:text-slate-200">{senderForEdit.name}</span>
                         {senderForEdit.type === 'group' && (
                             <>
-                                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
                                     Group
                                 </span>
                                 {senderForEdit.members?.length > 0 && (
-                                    <p className="mt-1 text-xs text-gray-500">
+                                    <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                                         Members: {senderForEdit.members.join(', ')}
                                     </p>
                                 )}
                             </>
                         )}
-                        <p className="mt-1 text-xs text-gray-500">You cannot edit this sender.</p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">You cannot edit this sender.</p>
                     </div>
                 </div>
             );
@@ -388,7 +388,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                         onChange={() => handleModeChange('select')}
                         className="mr-2"
                     />
-                    <span className="text-sm font-medium text-gray-700">Select Existing</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-slate-200">Select Existing</span>
                 </label>
                 <label className="flex items-center">
                     <input
@@ -398,7 +398,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                         onChange={() => handleModeChange('create')}
                         className="mr-2"
                     />
-                    <span className="text-sm font-medium text-gray-700">Create New</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-slate-200">Create New</span>
                 </label>
                 {showEditSenderOption && (
                     <label className="flex items-center">
@@ -409,7 +409,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                             onChange={() => handleModeChange('edit')}
                             className="mr-2"
                         />
-                        <span className="text-sm font-medium text-gray-700">Edit Sender</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-slate-200">Edit Sender</span>
                     </label>
                 )}
             </div>
@@ -438,18 +438,18 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                     />
 
                     {showDropdown && filteredSenders.length > 0 && (
-                        <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-300 bg-white shadow-lg">
+                        <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-300 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-700 dark:shadow-slate-900/50">
                             <ul className="max-h-60 overflow-auto py-1">
                                 {filteredSenders.map((sender) => (
                                     <li
                                         key={sender.id}
                                         onClick={() => handleSelectSender(sender.id)}
-                                        className="cursor-pointer px-4 py-2 hover:bg-gray-100"
+                                        className="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-600"
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className="font-medium">{sender.name}</span>
+                                            <span className="font-medium dark:text-slate-200">{sender.name}</span>
                                             {sender.type === 'group' && (
-                                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
                                                     Group
                                                 </span>
                                             )}
@@ -461,21 +461,21 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                     )}
 
                     {showDropdown && searchTerm && filteredSenders.length === 0 && (
-                        <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-300 bg-white p-4 text-sm text-gray-500 shadow-lg">
+                        <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-300 bg-white p-4 text-sm text-gray-500 shadow-lg dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:shadow-slate-900/50">
                             No senders found. Switch to "Create New" to add one.
                         </div>
                     )}
 
                     {selectedSender && !showDropdown && (
-                        <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                            <span className="font-medium text-gray-700">{selectedSender.name}</span>
+                        <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700/50">
+                            <span className="font-medium text-gray-700 dark:text-slate-200">{selectedSender.name}</span>
                             {selectedSender.type === 'group' && (
-                                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
                                     Group
                                 </span>
                             )}
                             {selectedSender.type === 'group' && selectedSender.members?.length > 0 && (
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                                     Members: {selectedSender.members.join(', ')}
                                 </p>
                             )}
@@ -485,7 +485,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
             ) : (mode === 'create' || mode === 'edit') ? (
                 <>
                     {mode === 'edit' && (
-                        <p className="text-sm text-gray-600">Editing sender name and members for this transaction.</p>
+                        <p className="text-sm text-gray-600 dark:text-slate-400">Editing sender name and members for this transaction.</p>
                     )}
                     {renderEditSenderForm()}
                 </>

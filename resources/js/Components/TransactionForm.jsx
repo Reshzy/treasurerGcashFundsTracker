@@ -113,7 +113,7 @@ export default function TransactionForm({ fundId, senders = [], savedMemberNames
                     id="notes"
                     name="notes"
                     value={data.notes}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
                     rows="3"
                     onChange={(e) => setData('notes', e.target.value)}
                 />
