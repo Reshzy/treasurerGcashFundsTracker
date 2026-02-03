@@ -5,24 +5,54 @@ import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import AnimatedBackground from '@/Components/AnimatedBackground';
 import ThemeToggle from '@/Components/ThemeToggle';
 import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useScroll, useMotionValueEvent } from 'motion/react';
+import { useRef, useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+    const [isMinimized, setIsMinimized] = useState(false);
+    const lastScrollY = useRef(0);
+
+    const { scrollY } = useScroll();
+
+    useMotionValueEvent(scrollY, 'change', (latest) => {
+        const diff = latest - lastScrollY.current;
+        lastScrollY.current = latest;
+
+        if (latest < 20) {
+            setIsMinimized(false);
+        } else if (diff > 0) {
+            setIsMinimized(true);
+        } else if (diff < 0) {
+            setIsMinimized(false);
+        }
+    });
 
     return (
         <div className="min-h-screen bg-slate-50/70 font-sans antialiased dark:bg-slate-950/85">
             <AnimatedBackground />
-            <nav className="border-b border-slate-200/60 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
+            <nav
+                className={`fixed left-0 right-0 top-0 z-50 border-b border-slate-200/60 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-slate-700/60 dark:bg-slate-800/90 dark:shadow-slate-950/50 ${
+                    isMinimized ? 'py-2' : 'py-4'
+                }`}
+            >
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
+                    <div
+                        className={`flex justify-between transition-all duration-300 ${
+                            isMinimized ? 'h-10' : 'h-12'
+                        }`}
+                    >
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800 dark:text-slate-200" />
+                                    <ApplicationLogo
+                                        className={`block w-auto fill-current text-gray-800 transition-all duration-300 dark:text-slate-200 ${
+                                            isMinimized ? 'h-7' : 'h-9'
+                                        }`}
+                                    />
                                 </Link>
                             </div>
 
@@ -203,15 +233,17 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             </nav>
 
-            {header && (
-                <header className="border-b border-slate-200/60 bg-white/80 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/80">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
-                    </div>
-                </header>
-            )}
+            <div className="pt-20">
+                {header && (
+                    <header className="border-b border-slate-200/60 bg-white/80 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/80">
+                        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                            {header}
+                        </div>
+                    </header>
+                )}
 
-            <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+                <main className="min-h-[calc(100vh-5rem)]">{children}</main>
+            </div>
         </div>
     );
 }
