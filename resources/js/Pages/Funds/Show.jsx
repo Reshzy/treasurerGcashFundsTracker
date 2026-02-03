@@ -1,15 +1,85 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import TransactionList from '@/Components/TransactionList';
+import TransactionFilters from '@/Components/TransactionFilters';
 import TransactionForm from '@/Components/TransactionForm';
 import PrimaryButton from '@/Components/PrimaryButton';
 import DangerButton from '@/Components/DangerButton';
 import Modal from '@/Components/Modal';
 import { Head, Link, router } from '@inertiajs/react';
 
+function filterTransactions(
+    transactions,
+    { senderSearch, notesSearch, categorySearch, dateFrom, dateTo, createdFrom, createdTo, amountMin, amountMax },
+) {
+    return transactions.filter((t) => {
+        const search = (senderSearch || '').trim().toLowerCase();
+        if (search) {
+            const senderNameMatch = (t.sender?.name || '').toLowerCase().includes(search);
+            const memberMatch =
+                t.sender?.type === 'group' &&
+                Array.isArray(t.sender.members) &&
+                t.sender.members.some((m) => String(m).toLowerCase().includes(search));
+            if (!senderNameMatch && !memberMatch) return false;
+        }
+        const notesSearchLower = (notesSearch || '').trim().toLowerCase();
+        if (notesSearchLower && !(t.notes || '').toLowerCase().includes(notesSearchLower)) return false;
+        const categorySearchLower = (categorySearch || '').trim().toLowerCase();
+        if (categorySearchLower && !(t.category || '').toLowerCase().includes(categorySearchLower)) return false;
+        if (dateFrom && t.date < dateFrom) return false;
+        if (dateTo && t.date > dateTo) return false;
+        const createdDate = t.created_at ? t.created_at.slice(0, 10) : '';
+        if (createdFrom && createdDate < createdFrom) return false;
+        if (createdTo && createdDate > createdTo) return false;
+        const amount = parseFloat(t.amount);
+        if (amountMin !== '' && !Number.isNaN(parseFloat(amountMin)) && amount < parseFloat(amountMin))
+            return false;
+        if (amountMax !== '' && !Number.isNaN(parseFloat(amountMax)) && amount > parseFloat(amountMax))
+            return false;
+        return true;
+    });
+}
+
 export default function Show({ fund, transactions, senders, savedMemberNames = [] }) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
+    const [senderSearch, setSenderSearch] = useState('');
+    const [notesSearch, setNotesSearch] = useState('');
+    const [categorySearch, setCategorySearch] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [createdFrom, setCreatedFrom] = useState('');
+    const [createdTo, setCreatedTo] = useState('');
+    const [amountMin, setAmountMin] = useState('');
+    const [amountMax, setAmountMax] = useState('');
+
+    const filteredTransactions = useMemo(
+        () =>
+            filterTransactions(transactions, {
+                senderSearch,
+                notesSearch,
+                categorySearch,
+                dateFrom,
+                dateTo,
+                createdFrom,
+                createdTo,
+                amountMin,
+                amountMax,
+            }),
+        [transactions, senderSearch, notesSearch, categorySearch, dateFrom, dateTo, createdFrom, createdTo, amountMin, amountMax],
+    );
+
+    const clearFilters = () => {
+        setSenderSearch('');
+        setNotesSearch('');
+        setCategorySearch('');
+        setDateFrom('');
+        setDateTo('');
+        setCreatedFrom('');
+        setCreatedTo('');
+        setAmountMin('');
+        setAmountMax('');
+    };
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-PH', {
@@ -104,9 +174,33 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                         </div>
                     )}
 
+                    {/* Transaction Filters */}
+                    <TransactionFilters
+                        senderSearch={senderSearch}
+                        onSenderSearchChange={setSenderSearch}
+                        notesSearch={notesSearch}
+                        onNotesSearchChange={setNotesSearch}
+                        categorySearch={categorySearch}
+                        onCategorySearchChange={setCategorySearch}
+                        dateFrom={dateFrom}
+                        onDateFromChange={setDateFrom}
+                        dateTo={dateTo}
+                        onDateToChange={setDateTo}
+                        createdFrom={createdFrom}
+                        onCreatedFromChange={setCreatedFrom}
+                        createdTo={createdTo}
+                        onCreatedToChange={setCreatedTo}
+                        amountMin={amountMin}
+                        onAmountMinChange={setAmountMin}
+                        amountMax={amountMax}
+                        onAmountMaxChange={setAmountMax}
+                        onClear={clearFilters}
+                        resultCount={filteredTransactions.length}
+                    />
+
                     {/* Transactions */}
                     <TransactionList
-                        transactions={transactions}
+                        transactions={filteredTransactions}
                         fundId={fund.id}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
