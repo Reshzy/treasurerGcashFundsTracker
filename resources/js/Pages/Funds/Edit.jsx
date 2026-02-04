@@ -3,17 +3,41 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 
-export default function Edit({ fund }) {
+const selectClasses =
+    'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100';
+
+export default function Edit({ fund, users = [] }) {
     const { data, setData, put, processing, errors } = useForm({
         name: fund.name || '',
         description: fund.description || '',
     });
 
+    const addMemberForm = useForm({
+        user_id: '',
+        role: 'viewer',
+    });
+
     const submit = (e) => {
         e.preventDefault();
         put(route('funds.update', fund.id));
+    };
+
+    const submitAddMember = (e) => {
+        e.preventDefault();
+        addMemberForm.post(route('funds.members.add', fund.id), {
+            preserveScroll: true,
+            onSuccess: () => addMemberForm.reset(),
+        });
+    };
+
+    const removeMember = (userId) => {
+        if (confirm('Are you sure you want to remove this member from the fund?')) {
+            router.delete(route('funds.members.remove', [fund.id, userId]), {
+                preserveScroll: true,
+            });
+        }
     };
 
     return (
@@ -68,15 +92,65 @@ export default function Edit({ fund }) {
                                         {fund.members.map((member) => (
                                             <span
                                                 key={member.id}
-                                                className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 dark:bg-slate-600 dark:text-slate-300"
+                                                className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 dark:bg-slate-600 dark:text-slate-300"
                                             >
                                                 {member.name}
-                                                <span className="ml-2 text-xs text-gray-500 dark:text-slate-400">
+                                                <span className="text-xs text-gray-500 dark:text-slate-400">
                                                     ({member.role})
                                                 </span>
+                                                {member.role !== 'owner' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeMember(member.id)}
+                                                        className="ml-1 rounded p-0.5 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/40"
+                                                        aria-label={`Remove ${member.name}`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
                                             </span>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+
+                            {users.length > 0 && (
+                                <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-slate-600 dark:bg-slate-700/30">
+                                    <InputLabel value="Add member" className="mb-2" />
+                                    <form onSubmit={submitAddMember} className="flex flex-wrap items-end gap-4">
+                                        <div className="min-w-0 flex-1 basis-40">
+                                            <select
+                                                id="add_member_user"
+                                                value={addMemberForm.data.user_id}
+                                                onChange={(e) => addMemberForm.setData('user_id', e.target.value)}
+                                                className={selectClasses}
+                                                required
+                                            >
+                                                <option value="">Select user...</option>
+                                                {users.map((u) => (
+                                                    <option key={u.id} value={u.id}>
+                                                        {u.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError message={addMemberForm.errors.user_id} className="mt-1" />
+                                        </div>
+                                        <div className="min-w-0 basis-32">
+                                            <select
+                                                id="add_member_role"
+                                                value={addMemberForm.data.role}
+                                                onChange={(e) => addMemberForm.setData('role', e.target.value)}
+                                                className={selectClasses}
+                                            >
+                                                <option value="viewer">View only</option>
+                                                <option value="member">View & edit</option>
+                                            </select>
+                                            <InputError message={addMemberForm.errors.role} className="mt-1" />
+                                        </div>
+                                        <PrimaryButton type="submit" disabled={addMemberForm.processing}>
+                                            Add
+                                        </PrimaryButton>
+                                    </form>
                                 </div>
                             )}
 

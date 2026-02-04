@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Fund;
 use App\Models\Sender;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -90,10 +91,10 @@ class FundController extends Controller
 
         // Check if user has access
         $user = Auth::user();
-        $hasAccess = $fund->members()->where('user_id', $user->id)->exists() 
+        $hasAccess = $fund->members()->where('user_id', $user->id)->exists()
             || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
+        if (! $hasAccess) {
             abort(403, 'You do not have access to this fund.');
         }
 
@@ -130,7 +131,7 @@ class FundController extends Controller
             })
             ->with('members')
             ->get()
-            ->map(fn($sender) => [
+            ->map(fn ($sender) => [
                 'id' => $sender->id,
                 'name' => $sender->name,
                 'type' => $sender->type,
@@ -141,6 +142,16 @@ class FundController extends Controller
 
         $savedMemberNames = $user->savedMemberNames()->pluck('name')->values()->all();
 
+        $canManageMembers = $fund->isOwner($user);
+        $memberIds = $fund->members->pluck('id');
+        $users = $canManageMembers
+            ? User::where('is_admin', true)
+                ->whereNotIn('id', $memberIds)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])
+            : [];
+
         return Inertia::render('Funds/Show', [
             'fund' => [
                 'id' => $fund->id,
@@ -148,14 +159,16 @@ class FundController extends Controller
                 'description' => $fund->description,
                 'total' => $fund->total,
                 'creator' => $fund->creator->name,
-                'members' => $fund->members->map(fn($member) => [
+                'members' => $fund->members->map(fn ($member) => [
                     'id' => $member->id,
                     'name' => $member->name,
                     'role' => $member->pivot->role,
                 ]),
-                'user_role' => $fund->members()->where('user_id', $user->id)->first()?->pivot->role 
+                'user_role' => $fund->members()->where('user_id', $user->id)->first()?->pivot->role
                     ?? ($fund->created_by === $user->id ? 'owner' : null),
+                'can_manage_members' => $canManageMembers,
             ],
+            'users' => $users,
             'transactions' => $transactions,
             'senders' => $senders,
             'savedMemberNames' => $savedMemberNames,
@@ -169,25 +182,30 @@ class FundController extends Controller
     {
         $fund = Fund::with('members')->findOrFail($id);
         $user = Auth::user();
-        
-        $hasAccess = $fund->members()->where('user_id', $user->id)->where('role', 'owner')->exists()
-            || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
+        if (! $fund->canEdit($user)) {
             abort(403, 'You do not have permission to edit this fund.');
         }
+
+        $memberIds = $fund->members->pluck('id');
+        $users = User::where('is_admin', true)
+            ->whereNotIn('id', $memberIds)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name]);
 
         return Inertia::render('Funds/Edit', [
             'fund' => [
                 'id' => $fund->id,
                 'name' => $fund->name,
                 'description' => $fund->description,
-                'members' => $fund->members->map(fn($member) => [
+                'members' => $fund->members->map(fn ($member) => [
                     'id' => $member->id,
                     'name' => $member->name,
                     'role' => $member->pivot->role,
                 ]),
             ],
+            'users' => $users,
         ]);
     }
 
@@ -198,11 +216,8 @@ class FundController extends Controller
     {
         $fund = Fund::findOrFail($id);
         $user = Auth::user();
-        
-        $hasAccess = $fund->members()->where('user_id', $user->id)->where('role', 'owner')->exists()
-            || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
+        if (! $fund->canEdit($user)) {
             abort(403, 'You do not have permission to update this fund.');
         }
 
@@ -236,11 +251,8 @@ class FundController extends Controller
     {
         $fund = Fund::findOrFail($id);
         $user = Auth::user();
-        
-        $hasAccess = $fund->members()->where('user_id', $user->id)->where('role', 'owner')->exists()
-            || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
+        if (! $fund->isOwner($user)) {
             abort(403, 'You do not have permission to delete this fund.');
         }
 
@@ -257,17 +269,14 @@ class FundController extends Controller
     {
         $fund = Fund::findOrFail($id);
         $user = Auth::user();
-        
-        $hasAccess = $fund->members()->where('user_id', $user->id)->where('role', 'owner')->exists()
-            || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
+        if (! $fund->isOwner($user)) {
             abort(403, 'You do not have permission to add members to this fund.');
         }
 
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'role' => 'required|in:owner,member',
+            'role' => 'required|in:viewer,member',
         ]);
 
         $fund->members()->syncWithoutDetaching([
@@ -275,5 +284,32 @@ class FundController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Member added successfully.');
+    }
+
+    /**
+     * Remove a member from the fund.
+     */
+    public function removeMember(Request $request, string $id, string $userId)
+    {
+        $fund = Fund::findOrFail($id);
+        $user = Auth::user();
+
+        if (! $fund->isOwner($user)) {
+            abort(403, 'You do not have permission to remove members from this fund.');
+        }
+
+        $memberToRemove = $fund->members()->where('user_id', $userId)->first();
+
+        if (! $memberToRemove) {
+            return redirect()->back()->with('error', 'Member not found in this fund.');
+        }
+
+        if ($memberToRemove->pivot->role === 'owner') {
+            return redirect()->back()->with('error', 'You cannot remove an owner from the fund.');
+        }
+
+        $fund->members()->detach($userId);
+
+        return redirect()->back()->with('success', 'Member removed successfully.');
     }
 }

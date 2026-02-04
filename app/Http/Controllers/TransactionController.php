@@ -33,14 +33,12 @@ class TransactionController extends Controller
             'category' => 'nullable|string|max:255',
         ]);
 
-        // Check if user has access to the fund
+        // Check if user can manage transactions (owner or member; viewer cannot)
         $fund = Fund::findOrFail($request->fund_id);
         $user = Auth::user();
-        $hasAccess = $fund->members()->where('user_id', $user->id)->exists()
-            || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
-            abort(403, 'You do not have access to this fund.');
+        if (! $fund->canManageTransactions($user)) {
+            abort(403, 'You do not have permission to add transactions to this fund.');
         }
 
         // Trap: same sender name already in this fund (case-insensitive)
@@ -65,7 +63,7 @@ class TransactionController extends Controller
         $senderId = $request->sender_id;
         if ($request->has('new_sender')) {
             $newSender = $request->new_sender;
-            
+
             if ($newSender['type'] === 'individual') {
                 // Create or get placeholder user for individual sender
                 $placeholderUser = User::firstOrCreate(
@@ -86,7 +84,7 @@ class TransactionController extends Controller
             } else {
                 // Group sender
                 $memberUserIds = [];
-                
+
                 // Create placeholder users for each member
                 foreach ($newSender['member_names'] as $memberName) {
                     $memberUser = User::firstOrCreate(
@@ -151,13 +149,11 @@ class TransactionController extends Controller
         $transaction = Transaction::findOrFail($id);
         $user = Auth::user();
 
-        // Check if user has access to the fund
+        // Check if user can manage transactions (owner or member; viewer cannot)
         $fund = $transaction->fund;
-        $hasAccess = $fund->members()->where('user_id', $user->id)->exists()
-            || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
-            abort(403, 'You do not have access to this transaction.');
+        if (! $fund->canManageTransactions($user)) {
+            abort(403, 'You do not have permission to edit this transaction.');
         }
 
         $rules = [
@@ -237,8 +233,8 @@ class TransactionController extends Controller
             'sender_id' => $validated['sender_id'],
             'amount' => $validated['amount'],
             'date' => $validated['date'],
-            'notes' => $validated['notes'],
-            'category' => $validated['category'],
+            'notes' => $validated['notes'] ?? null,
+            'category' => $validated['category'] ?? null,
         ]);
 
         return redirect()->route('funds.show', $fund->id)
@@ -253,13 +249,11 @@ class TransactionController extends Controller
         $transaction = Transaction::findOrFail($id);
         $user = Auth::user();
 
-        // Check if user has access to the fund
+        // Check if user can manage transactions (owner or member; viewer cannot)
         $fund = $transaction->fund;
-        $hasAccess = $fund->members()->where('user_id', $user->id)->exists()
-            || $fund->created_by === $user->id;
 
-        if (!$hasAccess) {
-            abort(403, 'You do not have access to this transaction.');
+        if (! $fund->canManageTransactions($user)) {
+            abort(403, 'You do not have permission to delete this transaction.');
         }
 
         $fundId = $fund->id;

@@ -36,4 +36,46 @@ class Fund extends Model
     {
         return $this->transactions()->sum('amount');
     }
+
+    /**
+     * Check if the user can manage transactions (add/edit/delete).
+     */
+    public function canManageTransactions(User $user): bool
+    {
+        $membership = $this->members()->where('user_id', $user->id)->first();
+
+        if ($membership) {
+            return in_array($membership->pivot->role, ['owner', 'member'], true);
+        }
+
+        return $this->created_by === $user->id;
+    }
+
+    /**
+     * Check if the user can edit the fund (name, description, members).
+     */
+    public function canEdit(User $user): bool
+    {
+        $membership = $this->members()->where('user_id', $user->id)->first();
+
+        if ($membership) {
+            return in_array($membership->pivot->role, ['owner', 'member'], true);
+        }
+
+        return $this->created_by === $user->id;
+    }
+
+    /**
+     * Check if the user is an owner (can add/remove members, delete fund).
+     */
+    public function isOwner(User $user): bool
+    {
+        $membership = $this->members()->where('user_id', $user->id)->first();
+
+        if ($membership) {
+            return $membership->pivot->role === 'owner';
+        }
+
+        return $this->created_by === $user->id;
+    }
 }
