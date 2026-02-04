@@ -32,7 +32,7 @@ export default function Edit({ user }) {
 
             <div className="py-12">
                 <div className="mx-auto max-w-2xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-slate-800 dark:shadow-slate-900/50">
                         <form onSubmit={submit} className="p-6">
                             <div>
                                 <InputLabel htmlFor="name" value="Name" />

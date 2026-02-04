@@ -325,7 +325,7 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                 setShowAddModal(false);
                 setEditingTransaction(null);
             }}>
-                <div className="p-6">
+                <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-6 scrollbar-thin">
                     <h3 className="text-lg font-medium text-gray-900 mb-4 dark:text-slate-100">
                         {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
                     </h3>
