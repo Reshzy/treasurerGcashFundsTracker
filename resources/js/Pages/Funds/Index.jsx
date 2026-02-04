@@ -138,9 +138,9 @@ export default function Index({ funds, filters = {} }) {
                     {hasFunds && (
                         <FundFilters
                             nameSearch={nameSearch}
-                            onNameSearchChange={(e) => handleNameChange(e.target.value)}
+                            onNameSearchChange={handleNameChange}
                             descriptionSearch={descriptionSearch}
-                            onDescriptionSearchChange={(e) => handleDescriptionChange(e.target.value)}
+                            onDescriptionSearchChange={handleDescriptionChange}
                             totalMin={totalMin}
                             onTotalMinChange={(v) => handleFilterChange('total_min', v)}
                             totalMax={totalMax}

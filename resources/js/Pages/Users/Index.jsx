@@ -136,9 +136,9 @@ export default function Index({ users, filters = {} }) {
                     {hasUsers && (
                         <UserFilters
                             nameSearch={nameSearch}
-                            onNameSearchChange={(e) => handleNameChange(e.target.value)}
+                            onNameSearchChange={handleNameChange}
                             emailSearch={emailSearch}
-                            onEmailSearchChange={(e) => handleEmailChange(e.target.value)}
+                            onEmailSearchChange={handleEmailChange}
                             roleFilter={roleFilter}
                             onRoleFilterChange={handleRoleChange}
                             createdFrom={createdFrom}

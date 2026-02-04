@@ -346,11 +346,11 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                     {/* Transaction Filters */}
                     <TransactionFilters
                         senderSearch={senderSearch}
-                        onSenderSearchChange={(e) => handleSenderSearchChange(e.target.value)}
+                        onSenderSearchChange={handleSenderSearchChange}
                         notesSearch={notesSearch}
                         onNotesSearchChange={(e) => handleNotesSearchChange(e.target.value)}
                         categorySearch={categorySearch}
-                        onCategorySearchChange={(e) => handleCategorySearchChange(e.target.value)}
+                        onCategorySearchChange={handleCategorySearchChange}
                         dateFrom={dateFrom}
                         onDateFromChange={(v) => handleFilterChange('date_from', v)}
                         dateTo={dateTo}
