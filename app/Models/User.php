@@ -25,6 +25,7 @@ class User extends Authenticatable
         'password',
         'is_admin',
         'theme_preference',
+        'hide_add_member_ui',
     ];
 
     /**
@@ -48,6 +49,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'hide_add_member_ui' => 'boolean',
         ];
     }
 

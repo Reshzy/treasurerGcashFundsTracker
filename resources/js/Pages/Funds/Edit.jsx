@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
-import { Head, useForm, router } from '@inertiajs/react';
+import axios from 'axios';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 
 const selectClasses =
     'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100';
@@ -38,6 +42,16 @@ export default function Edit({ fund, users = [] }) {
                 preserveScroll: true,
             });
         }
+    };
+
+    const initialHideAddMemberUi = usePage().props.auth?.user?.hide_add_member_ui ?? false;
+    const [hideAddMemberUi, setHideAddMemberUiState] = useState(initialHideAddMemberUi);
+
+    const setHideAddMemberUi = (hide) => {
+        setHideAddMemberUiState(hide);
+        axios.patch(route('profile.add-member-ui.update'), { hide }).catch(() => {
+            setHideAddMemberUiState(!hide);
+        });
     };
 
     return (
@@ -85,36 +99,57 @@ export default function Edit({ fund, users = [] }) {
                                 <InputError message={errors.description} className="mt-2" />
                             </div>
 
-                            {fund.members?.length > 0 && (
-                                <div className="mt-4">
-                                    <InputLabel value="Fund members" />
-                                    <div className="mt-2 flex flex-wrap gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-slate-600 dark:bg-slate-700/50">
-                                        {fund.members.map((member) => (
-                                            <span
-                                                key={member.id}
-                                                className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 dark:bg-slate-600 dark:text-slate-300"
-                                            >
-                                                {member.name}
-                                                <span className="text-xs text-gray-500 dark:text-slate-400">
-                                                    ({member.role})
-                                                </span>
-                                                {member.role !== 'owner' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeMember(member.id)}
-                                                        className="ml-1 rounded p-0.5 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/40"
-                                                        aria-label={`Remove ${member.name}`}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
+                            <div className="mt-4">
+                                <InputLabel value="Fund members" />
+                                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 dark:border-slate-600 dark:bg-slate-700/50">
+                                    {fund.members?.map((member) => (
+                                        <span
+                                            key={member.id}
+                                            className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-3 py-1 text-sm text-gray-700 dark:bg-slate-600 dark:text-slate-300"
+                                        >
+                                            {member.name}
+                                            <span className="text-xs text-gray-500 dark:text-slate-400">
+                                                ({member.role})
                                             </span>
-                                        ))}
-                                    </div>
+                                            {member.role !== 'owner' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeMember(member.id)}
+                                                    className="ml-1 rounded p-0.5 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/40"
+                                                    aria-label={`Remove ${member.name}`}
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </span>
+                                    ))}
+                                    {users.length > 0 && (
+                                        <SecondaryButton
+                                            type="button"
+                                            onClick={() => setHideAddMemberUi(!hideAddMemberUi)}
+                                            className={
+                                                hideAddMemberUi
+                                                    ? '!border-indigo-300 !bg-indigo-50 !text-indigo-600 hover:!bg-indigo-100 dark:!border-indigo-600 dark:!bg-indigo-900/20 dark:!text-indigo-300 dark:hover:!bg-indigo-900/40'
+                                                    : '!border-indigo-300 !bg-indigo-100 !text-indigo-700 ring-2 ring-indigo-500 ring-offset-2 hover:!bg-indigo-200 dark:!border-indigo-600 dark:!bg-indigo-900/40 dark:!text-indigo-200 dark:ring-offset-slate-800 dark:hover:!bg-indigo-900/60'
+                                            }
+                                        >
+                                            {hideAddMemberUi ? (
+                                                <>
+                                                    <ChevronDown className="mr-1.5 h-4 w-4" aria-hidden />
+                                                    Show add member
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ChevronUp className="mr-1.5 h-4 w-4" aria-hidden />
+                                                    Hide add member
+                                                </>
+                                            )}
+                                        </SecondaryButton>
+                                    )}
                                 </div>
-                            )}
+                            </div>
 
-                            {users.length > 0 && (
+                            {users.length > 0 && !hideAddMemberUi && (
                                 <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-slate-600 dark:bg-slate-700/30">
                                     <InputLabel value="Add member" className="mb-2" />
                                     <form onSubmit={submitAddMember} className="flex flex-wrap items-end gap-4">

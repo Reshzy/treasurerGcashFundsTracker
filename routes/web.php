@@ -53,6 +53,7 @@ Route::get('/unauthorized', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::patch('/profile/theme', [ProfileController::class, 'updateTheme'])->name('profile.theme.update');
+    Route::patch('/profile/add-member-ui', [ProfileController::class, 'updateAddMemberUiPreference'])->name('profile.add-member-ui.update');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {

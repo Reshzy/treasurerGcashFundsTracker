@@ -55,6 +55,22 @@ class ProfileController extends Controller
     }
 
     /**
+     * Update the user's preference to hide the add member UI.
+     */
+    public function updateAddMemberUiPreference(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'hide' => ['required', 'boolean'],
+        ]);
+
+        $request->user()->update([
+            'hide_add_member_ui' => $validated['hide'],
+        ]);
+
+        return response()->json(['hide_add_member_ui' => $validated['hide']]);
+    }
+
+    /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse
