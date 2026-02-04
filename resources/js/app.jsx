@@ -31,9 +31,15 @@ createInertiaApp({
         color: '#059669',
     },
     defaults: {
-        visitOptions: (href, options) => ({
-            ...options,
-            viewTransition: true,
-        }),
+        visitOptions: (href, options) => {
+            const currentPath = window.location.pathname;
+            const targetPath = new URL(href, window.location.origin).pathname;
+            const isSamePage = currentPath === targetPath;
+
+            return {
+                ...options,
+                viewTransition: options.viewTransition ?? !isSamePage,
+            };
+        },
     },
 });
