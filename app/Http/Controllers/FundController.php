@@ -14,19 +14,38 @@ class FundController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
+        $name = $request->input('name');
+        $description = $request->input('description');
+        $totalMin = $request->input('total_min');
+        $totalMax = $request->input('total_max');
+        $transactionsMin = $request->input('transactions_min');
+        $transactionsMax = $request->input('transactions_max');
+        $createdFrom = $request->input('created_from');
+        $createdTo = $request->input('created_to');
+
         $funds = $user->funds()
             ->with(['creator', 'transactions'])
             ->withCount('transactions')
-            ->get()
-            ->map(function ($fund) {
+            ->when($name, fn ($q) => $q->where('funds.name', 'like', '%'.trim($name).'%'))
+            ->when($description, fn ($q) => $q->where('funds.description', 'like', '%'.trim($description).'%'))
+            ->when($totalMin !== null && $totalMin !== '', fn ($q) => $q->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transactions.fund_id = funds.id) >= ?', [(float) $totalMin]))
+            ->when($totalMax !== null && $totalMax !== '', fn ($q) => $q->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transactions.fund_id = funds.id) <= ?', [(float) $totalMax]))
+            ->when($transactionsMin !== null && $transactionsMin !== '', fn ($q) => $q->having('transactions_count', '>=', (int) $transactionsMin))
+            ->when($transactionsMax !== null && $transactionsMax !== '', fn ($q) => $q->having('transactions_count', '<=', (int) $transactionsMax))
+            ->when($createdFrom, fn ($q) => $q->whereDate('funds.created_at', '>=', $createdFrom))
+            ->when($createdTo, fn ($q) => $q->whereDate('funds.created_at', '<=', $createdTo))
+            ->orderBy('funds.name')
+            ->paginate(15)
+            ->withQueryString()
+            ->through(function ($fund) {
                 return [
                     'id' => $fund->id,
                     'name' => $fund->name,
                     'description' => $fund->description,
-                    'total' => $fund->total,
+                    'total' => $fund->transactions->sum('amount'),
                     'transaction_count' => $fund->transactions_count,
                     'creator' => $fund->creator->name,
                     'role' => $fund->pivot->role ?? 'owner',
@@ -37,6 +56,7 @@ class FundController extends Controller
 
         return Inertia::render('Funds/Index', [
             'funds' => $funds,
+            'filters' => $request->only(['name', 'description', 'total_min', 'total_max', 'transactions_min', 'transactions_max', 'created_from', 'created_to']),
         ]);
     }
 
@@ -84,10 +104,10 @@ class FundController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $fund)
     {
-        $fund = Fund::with(['creator', 'members', 'transactions.sender.members', 'transactions.creator'])
-            ->findOrFail($id);
+        $fund = Fund::with(['creator', 'members'])
+            ->findOrFail($fund);
 
         // Check if user has access
         $user = Auth::user();
@@ -98,11 +118,37 @@ class FundController extends Controller
             abort(403, 'You do not have access to this fund.');
         }
 
+        $senderSearch = $request->input('sender_search');
+        $notes = $request->input('notes');
+        $category = $request->input('category');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $createdFrom = $request->input('created_from');
+        $createdTo = $request->input('created_to');
+        $amountMin = $request->input('amount_min');
+        $amountMax = $request->input('amount_max');
+
+        $searchTerm = $senderSearch ? '%'.trim($senderSearch).'%' : null;
+
         $transactions = $fund->transactions()
+            ->with(['sender.members', 'creator'])
             ->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($transaction) use ($user) {
+            ->when($searchTerm, fn ($q) => $q->whereHas('sender', function ($s) use ($searchTerm) {
+                $s->where('name', 'like', $searchTerm)
+                    ->orWhereHas('members', fn ($m) => $m->where('name', 'like', $searchTerm));
+            }))
+            ->when($notes, fn ($q) => $q->where('notes', 'like', '%'.trim($notes).'%'))
+            ->when($category, fn ($q) => $q->where('category', 'like', '%'.trim($category).'%'))
+            ->when($dateFrom, fn ($q) => $q->whereDate('date', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('date', '<=', $dateTo))
+            ->when($createdFrom, fn ($q) => $q->whereDate('created_at', '>=', $createdFrom))
+            ->when($createdTo, fn ($q) => $q->whereDate('created_at', '<=', $createdTo))
+            ->when($amountMin !== null && $amountMin !== '', fn ($q) => $q->where('amount', '>=', (float) $amountMin))
+            ->when($amountMax !== null && $amountMax !== '', fn ($q) => $q->where('amount', '<=', (float) $amountMax))
+            ->paginate(15)
+            ->withQueryString()
+            ->through(function ($transaction) use ($user) {
                 return [
                     'id' => $transaction->id,
                     'amount' => $transaction->amount,
@@ -172,6 +218,11 @@ class FundController extends Controller
             'transactions' => $transactions,
             'senders' => $senders,
             'savedMemberNames' => $savedMemberNames,
+            'filters' => $request->only([
+                'sender_search', 'notes', 'category',
+                'date_from', 'date_to', 'created_from', 'created_to',
+                'amount_min', 'amount_max',
+            ]),
         ]);
     }
 

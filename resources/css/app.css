@@ -73,6 +73,15 @@ html:active-view-transition-type(theme)::view-transition-new(root) {
     }
 }
 
+/* Hide scrollbar (content still scrollable) */
+.scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
 /* Thin scrollbar utility for modal overflow */
 .scrollbar-thin {
     scrollbar-width: thin;

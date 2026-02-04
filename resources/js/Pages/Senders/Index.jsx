@@ -1,8 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Index({ senders }) {
+    const senderList = senders?.data ?? senders ?? [];
+    const total = senders?.total ?? senderList.length;
+
     return (
         <AuthenticatedLayout
             header={
@@ -20,7 +24,7 @@ export default function Index({ senders }) {
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    {senders.length === 0 ? (
+                    {senderList.length === 0 ? (
                         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
                             <p className="text-lg text-gray-500 dark:text-slate-400">
                                 No senders yet. Create your first sender to get started.
@@ -52,7 +56,7 @@ export default function Index({ senders }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-700 dark:bg-slate-800">
-                                    {senders.map((sender) => (
+                                    {senderList.map((sender) => (
                                         <tr key={sender.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
                                             <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-slate-300">
                                                 {sender.name}
@@ -83,6 +87,11 @@ export default function Index({ senders }) {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+                    {senderList.length > 0 && senders?.links && (
+                        <div className="mt-4 flex justify-center">
+                            <Pagination links={senders.links} />
                         </div>
                     )}
                 </div>

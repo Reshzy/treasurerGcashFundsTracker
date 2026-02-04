@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import TransactionList from '@/Components/TransactionList';
 import TransactionFilters from '@/Components/TransactionFilters';
 import TransactionForm from '@/Components/TransactionForm';
+import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
@@ -15,66 +16,96 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 const selectClasses =
     'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100';
 
-function filterTransactions(
-    transactions,
-    { senderSearch, notesSearch, categorySearch, dateFrom, dateTo, createdFrom, createdTo, amountMin, amountMax },
-) {
-    return transactions.filter((t) => {
-        const search = (senderSearch || '').trim().toLowerCase();
-        if (search) {
-            const senderNameMatch = (t.sender?.name || '').toLowerCase().includes(search);
-            const memberMatch =
-                t.sender?.type === 'group' &&
-                Array.isArray(t.sender.members) &&
-                t.sender.members.some((m) => String(m).toLowerCase().includes(search));
-            if (!senderNameMatch && !memberMatch) return false;
-        }
-        const notesSearchLower = (notesSearch || '').trim().toLowerCase();
-        if (notesSearchLower && !(t.notes || '').toLowerCase().includes(notesSearchLower)) return false;
-        const categorySearchLower = (categorySearch || '').trim().toLowerCase();
-        if (categorySearchLower && !(t.category || '').toLowerCase().includes(categorySearchLower)) return false;
-        if (dateFrom && t.date < dateFrom) return false;
-        if (dateTo && t.date > dateTo) return false;
-        const createdDate = t.created_at ? t.created_at.slice(0, 10) : '';
-        if (createdFrom && createdDate < createdFrom) return false;
-        if (createdTo && createdDate > createdTo) return false;
-        const amount = parseFloat(t.amount);
-        if (amountMin !== '' && !Number.isNaN(parseFloat(amountMin)) && amount < parseFloat(amountMin))
-            return false;
-        if (amountMax !== '' && !Number.isNaN(parseFloat(amountMax)) && amount > parseFloat(amountMax))
-            return false;
-        return true;
-    });
+function applyFilters(fundId, params) {
+    const { page, ...rest } = params;
+    router.get(
+        route('funds.show', fundId),
+        Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')),
+        {
+            preserveState: false,
+            preserveScroll: true,
+        },
+    );
 }
 
-export default function Show({ fund, transactions, senders, savedMemberNames = [], users = [] }) {
+export default function Show({ fund, transactions, senders, savedMemberNames = [], users = [], filters = {} }) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
-    const [senderSearch, setSenderSearch] = useState('');
-    const [notesSearch, setNotesSearch] = useState('');
-    const [categorySearch, setCategorySearch] = useState('');
-    const [dateFrom, setDateFrom] = useState('');
-    const [dateTo, setDateTo] = useState('');
-    const [createdFrom, setCreatedFrom] = useState('');
-    const [createdTo, setCreatedTo] = useState('');
-    const [amountMin, setAmountMin] = useState('');
-    const [amountMax, setAmountMax] = useState('');
+    const [senderSearch, setSenderSearch] = useState(filters.sender_search ?? '');
+    const [notesSearch, setNotesSearch] = useState(filters.notes ?? '');
+    const [categorySearch, setCategorySearch] = useState(filters.category ?? '');
+    const [dateFrom, setDateFrom] = useState(filters.date_from ?? '');
+    const [dateTo, setDateTo] = useState(filters.date_to ?? '');
+    const [createdFrom, setCreatedFrom] = useState(filters.created_from ?? '');
+    const [createdTo, setCreatedTo] = useState(filters.created_to ?? '');
+    const [amountMin, setAmountMin] = useState(filters.amount_min ?? '');
+    const [amountMax, setAmountMax] = useState(filters.amount_max ?? '');
+    const senderTimeoutRef = useRef(null);
+    const notesTimeoutRef = useRef(null);
+    const categoryTimeoutRef = useRef(null);
 
-    const filteredTransactions = useMemo(
-        () =>
-            filterTransactions(transactions, {
-                senderSearch,
-                notesSearch,
-                categorySearch,
-                dateFrom,
-                dateTo,
-                createdFrom,
-                createdTo,
-                amountMin,
-                amountMax,
-            }),
-        [transactions, senderSearch, notesSearch, categorySearch, dateFrom, dateTo, createdFrom, createdTo, amountMin, amountMax],
+    useEffect(() => {
+        setSenderSearch(filters.sender_search ?? '');
+        setNotesSearch(filters.notes ?? '');
+        setCategorySearch(filters.category ?? '');
+        setDateFrom(filters.date_from ?? '');
+        setDateTo(filters.date_to ?? '');
+        setCreatedFrom(filters.created_from ?? '');
+        setCreatedTo(filters.created_to ?? '');
+        setAmountMin(filters.amount_min ?? '');
+        setAmountMax(filters.amount_max ?? '');
+    }, [
+        filters.sender_search,
+        filters.notes,
+        filters.category,
+        filters.date_from,
+        filters.date_to,
+        filters.created_from,
+        filters.created_to,
+        filters.amount_min,
+        filters.amount_max,
+    ]);
+
+    const handleSenderSearchChange = useCallback(
+        (value) => {
+            setSenderSearch(value);
+            if (senderTimeoutRef.current) clearTimeout(senderTimeoutRef.current);
+            senderTimeoutRef.current = setTimeout(() => {
+                applyFilters(fund.id, { ...filters, sender_search: value || undefined });
+            }, 300);
+        },
+        [fund.id, filters],
     );
+
+    const handleNotesSearchChange = useCallback(
+        (value) => {
+            setNotesSearch(value);
+            if (notesTimeoutRef.current) clearTimeout(notesTimeoutRef.current);
+            notesTimeoutRef.current = setTimeout(() => {
+                applyFilters(fund.id, { ...filters, notes: value || undefined });
+            }, 300);
+        },
+        [fund.id, filters],
+    );
+
+    const handleCategorySearchChange = useCallback(
+        (value) => {
+            setCategorySearch(value);
+            if (categoryTimeoutRef.current) clearTimeout(categoryTimeoutRef.current);
+            categoryTimeoutRef.current = setTimeout(() => {
+                applyFilters(fund.id, { ...filters, category: value || undefined });
+            }, 300);
+        },
+        [fund.id, filters],
+    );
+
+    useEffect(() => {
+        return () => {
+            if (senderTimeoutRef.current) clearTimeout(senderTimeoutRef.current);
+            if (notesTimeoutRef.current) clearTimeout(notesTimeoutRef.current);
+            if (categoryTimeoutRef.current) clearTimeout(categoryTimeoutRef.current);
+        };
+    }, []);
 
     const clearFilters = () => {
         setSenderSearch('');
@@ -86,6 +117,20 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
         setCreatedTo('');
         setAmountMin('');
         setAmountMax('');
+        applyFilters(fund.id, {});
+    };
+
+    const handleFilterChange = (key, value) => {
+        const setters = {
+            date_from: setDateFrom,
+            date_to: setDateTo,
+            created_from: setCreatedFrom,
+            created_to: setCreatedTo,
+            amount_min: setAmountMin,
+            amount_max: setAmountMax,
+        };
+        setters[key]?.(value);
+        applyFilters(fund.id, { ...filters, [key]: value || undefined });
     };
 
     const formatCurrency = (amount) => {
@@ -141,6 +186,19 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
         });
     };
 
+    const transactionList = transactions?.data ?? transactions ?? [];
+    const transactionTotal = transactions?.total ?? transactionList.length;
+    const hasActiveFilters =
+        filters.sender_search ||
+        filters.notes ||
+        filters.category ||
+        filters.date_from ||
+        filters.date_to ||
+        filters.created_from ||
+        filters.created_to ||
+        filters.amount_min ||
+        filters.amount_max;
+
     return (
         <AuthenticatedLayout
             header={
@@ -185,7 +243,7 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                                 <div className="text-right">
                                     <p className="text-sm font-medium text-gray-500 dark:text-slate-400">Transactions</p>
                                     <p className="mt-1 text-3xl font-bold text-gray-700 dark:text-slate-300">
-                                        {transactions.length}
+                                        {transactionTotal}
                                     </p>
                                 </div>
                             </div>
@@ -288,35 +346,40 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                     {/* Transaction Filters */}
                     <TransactionFilters
                         senderSearch={senderSearch}
-                        onSenderSearchChange={setSenderSearch}
+                        onSenderSearchChange={(e) => handleSenderSearchChange(e.target.value)}
                         notesSearch={notesSearch}
-                        onNotesSearchChange={setNotesSearch}
+                        onNotesSearchChange={(e) => handleNotesSearchChange(e.target.value)}
                         categorySearch={categorySearch}
-                        onCategorySearchChange={setCategorySearch}
+                        onCategorySearchChange={(e) => handleCategorySearchChange(e.target.value)}
                         dateFrom={dateFrom}
-                        onDateFromChange={setDateFrom}
+                        onDateFromChange={(v) => handleFilterChange('date_from', v)}
                         dateTo={dateTo}
-                        onDateToChange={setDateTo}
+                        onDateToChange={(v) => handleFilterChange('date_to', v)}
                         createdFrom={createdFrom}
-                        onCreatedFromChange={setCreatedFrom}
+                        onCreatedFromChange={(v) => handleFilterChange('created_from', v)}
                         createdTo={createdTo}
-                        onCreatedToChange={setCreatedTo}
+                        onCreatedToChange={(v) => handleFilterChange('created_to', v)}
                         amountMin={amountMin}
-                        onAmountMinChange={setAmountMin}
+                        onAmountMinChange={(v) => handleFilterChange('amount_min', v)}
                         amountMax={amountMax}
-                        onAmountMaxChange={setAmountMax}
+                        onAmountMaxChange={(v) => handleFilterChange('amount_max', v)}
                         onClear={clearFilters}
-                        resultCount={filteredTransactions.length}
+                        resultCount={transactionTotal}
                     />
 
                     {/* Transactions */}
                     <TransactionList
-                        transactions={filteredTransactions}
+                        transactions={transactionList}
                         fundId={fund.id}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         canEdit={canEdit}
                     />
+                    {transactions?.links && (
+                        <div className="mt-4 flex justify-center">
+                            <Pagination links={transactions.links} />
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -325,7 +388,7 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                 setShowAddModal(false);
                 setEditingTransaction(null);
             }}>
-                <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-6 scrollbar-thin">
+                <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-6 scrollbar-hide">
                     <h3 className="text-lg font-medium text-gray-900 mb-4 dark:text-slate-100">
                         {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
                     </h3>

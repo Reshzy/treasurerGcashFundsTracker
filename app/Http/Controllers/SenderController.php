@@ -21,18 +21,17 @@ class SenderController extends Controller
                 $query->where('user_id', Auth::id());
             })
             ->with(['creator', 'members'])
-            ->get()
-            ->map(function ($sender) {
-                return [
-                    'id' => $sender->id,
-                    'name' => $sender->name,
-                    'type' => $sender->type,
-                    'creator' => $sender->creator->name,
-                    'members' => $sender->members->map(fn($member) => $member->name),
-                    'created_at' => $sender->created_at->format('Y-m-d'),
-                    'created_at_formatted' => $sender->created_at->format('M j, Y g:i A'),
-                ];
-            });
+            ->orderBy('name')
+            ->paginate(15)
+            ->through(fn ($sender) => [
+                'id' => $sender->id,
+                'name' => $sender->name,
+                'type' => $sender->type,
+                'creator' => $sender->creator->name,
+                'members' => $sender->members->map(fn ($member) => $member->name),
+                'created_at' => $sender->created_at->format('Y-m-d'),
+                'created_at_formatted' => $sender->created_at->format('M j, Y g:i A'),
+            ]);
 
         return Inertia::render('Senders/Index', [
             'senders' => $senders,
@@ -45,6 +44,7 @@ class SenderController extends Controller
     public function create()
     {
         $users = \App\Models\User::select('id', 'name')->get();
+
         return Inertia::render('Senders/Create', [
             'users' => $users,
         ]);
@@ -114,7 +114,7 @@ class SenderController extends Controller
     public function edit(string $id)
     {
         $sender = Sender::with('members')->findOrFail($id);
-        
+
         if ($sender->created_by !== Auth::id()) {
             abort(403, 'You do not have permission to edit this sender.');
         }
@@ -130,7 +130,7 @@ class SenderController extends Controller
     public function update(Request $request, string $id)
     {
         $sender = Sender::findOrFail($id);
-        
+
         if ($sender->created_by !== Auth::id()) {
             abort(403, 'You do not have permission to update this sender.');
         }
@@ -183,7 +183,7 @@ class SenderController extends Controller
     public function destroy(string $id)
     {
         $sender = Sender::findOrFail($id);
-        
+
         if ($sender->created_by !== Auth::id()) {
             abort(403, 'You do not have permission to delete this sender.');
         }
