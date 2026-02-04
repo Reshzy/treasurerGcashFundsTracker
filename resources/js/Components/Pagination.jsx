@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 
-export default function Pagination({ links = [], className = '' }) {
+export default function Pagination({ links = [], className = '', only }) {
     if (!links || links.length <= 1) {
         return null;
     }
@@ -50,7 +50,14 @@ export default function Pagination({ links = [], className = '' }) {
                 }
 
                 return (
-                    <Link key={index} href={link.url} className={classes} preserveState>
+                    <Link
+                        key={index}
+                        href={link.url}
+                        className={classes}
+                        preserveState
+                        preserveScroll
+                        {...(only?.length ? { only } : {})}
+                    >
                         {content}
                     </Link>
                 );

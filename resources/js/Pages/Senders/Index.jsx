@@ -91,7 +91,7 @@ export default function Index({ senders }) {
                     )}
                     {senderList.length > 0 && senders?.links && (
                         <div className="mt-4 flex justify-center">
-                            <Pagination links={senders.links} />
+                            <Pagination links={senders.links} only={['senders']} />
                         </div>
                     )}
                 </div>

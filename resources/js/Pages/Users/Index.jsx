@@ -269,7 +269,7 @@ export default function Index({ users, filters = {} }) {
                             </div>
                             {users?.links && (
                                 <div className="mt-4 flex justify-center">
-                                    <Pagination links={users.links} />
+                                    <Pagination links={users.links} only={['users', 'filters']} />
                                 </div>
                             )}
                         </>

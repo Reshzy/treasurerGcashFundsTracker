@@ -179,7 +179,7 @@ export default function Index({ funds, filters = {} }) {
                             </div>
                             {funds?.links && (
                                 <div className="mt-6 flex justify-center">
-                                    <Pagination links={funds.links} />
+                                    <Pagination links={funds.links} only={['funds', 'filters']} />
                                 </div>
                             )}
                         </>

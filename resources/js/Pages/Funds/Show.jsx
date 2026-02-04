@@ -377,7 +377,7 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                     />
                     {transactions?.links && (
                         <div className="mt-4 flex justify-center">
-                            <Pagination links={transactions.links} />
+                            <Pagination links={transactions.links} only={['transactions', 'filters']} />
                         </div>
                     )}
                 </div>
