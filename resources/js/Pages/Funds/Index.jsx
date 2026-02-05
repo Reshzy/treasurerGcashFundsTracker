@@ -1,91 +1,90 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ClientPagination from '@/Components/ClientPagination';
 import FundCard from '@/Components/FundCard';
 import FundFilters from '@/Components/FundFilters';
-import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 
-function applyFilters(params) {
-    const { page, ...rest } = params;
-    const activeElement = document.activeElement;
-    router.get(
-        route('funds.index'),
-        Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')),
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            only: ['funds', 'filters'],
-            onFinish: () => {
-                if (activeElement && typeof activeElement.focus === 'function' && document.contains(activeElement)) {
-                    activeElement.focus();
-                }
-            },
-        },
-    );
+function filterFunds(funds, filters) {
+    const {
+        nameSearch = '',
+        descriptionSearch = '',
+        totalMin = '',
+        totalMax = '',
+        transactionsMin = '',
+        transactionsMax = '',
+        createdFrom = '',
+        createdTo = '',
+    } = filters;
+
+    return funds.filter((f) => {
+        const nameMatch = !nameSearch.trim() || (f.name?.toLowerCase().includes(nameSearch.toLowerCase()));
+        const descMatch =
+            !descriptionSearch.trim() ||
+            ((f.description ?? '').toLowerCase().includes(descriptionSearch.toLowerCase()));
+        const totalMinMatch = totalMin === '' || Number(f.total) >= Number(totalMin);
+        const totalMaxMatch = totalMax === '' || Number(f.total) <= Number(totalMax);
+        const transMinMatch =
+            transactionsMin === '' || (f.transaction_count ?? 0) >= Number(transactionsMin);
+        const transMaxMatch =
+            transactionsMax === '' || (f.transaction_count ?? 0) <= Number(transactionsMax);
+        const createdDate = String(f.created_at || '').slice(0, 10);
+        const createdFromMatch = !createdFrom || createdDate >= createdFrom;
+        const createdToMatch = !createdTo || createdDate <= createdTo;
+
+        return (
+            nameMatch &&
+            descMatch &&
+            totalMinMatch &&
+            totalMaxMatch &&
+            transMinMatch &&
+            transMaxMatch &&
+            createdFromMatch &&
+            createdToMatch
+        );
+    });
 }
 
-export default function Index({ funds, filters = {} }) {
-    const [nameSearch, setNameSearch] = useState(filters.name ?? '');
-    const [descriptionSearch, setDescriptionSearch] = useState(filters.description ?? '');
-    const [totalMin, setTotalMin] = useState(filters.total_min ?? '');
-    const [totalMax, setTotalMax] = useState(filters.total_max ?? '');
-    const [transactionsMin, setTransactionsMin] = useState(filters.transactions_min ?? '');
-    const [transactionsMax, setTransactionsMax] = useState(filters.transactions_max ?? '');
-    const [createdFrom, setCreatedFrom] = useState(filters.created_from ?? '');
-    const [createdTo, setCreatedTo] = useState(filters.created_to ?? '');
-    const nameTimeoutRef = useRef(null);
-    const descTimeoutRef = useRef(null);
+export default function Index({ funds = [] }) {
+    const [nameSearch, setNameSearch] = useState('');
+    const [descriptionSearch, setDescriptionSearch] = useState('');
+    const [totalMin, setTotalMin] = useState('');
+    const [totalMax, setTotalMax] = useState('');
+    const [transactionsMin, setTransactionsMin] = useState('');
+    const [transactionsMax, setTransactionsMax] = useState('');
+    const [createdFrom, setCreatedFrom] = useState('');
+    const [createdTo, setCreatedTo] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage] = useState(15);
+
+    const allFunds = Array.isArray(funds) ? funds : [];
+    const filteredFunds = filterFunds(allFunds, {
+        nameSearch,
+        descriptionSearch,
+        totalMin,
+        totalMax,
+        transactionsMin,
+        transactionsMax,
+        createdFrom,
+        createdTo,
+    });
 
     useEffect(() => {
-        setNameSearch(filters.name ?? '');
-        setDescriptionSearch(filters.description ?? '');
-        setTotalMin(filters.total_min ?? '');
-        setTotalMax(filters.total_max ?? '');
-        setTransactionsMin(filters.transactions_min ?? '');
-        setTransactionsMax(filters.transactions_max ?? '');
-        setCreatedFrom(filters.created_from ?? '');
-        setCreatedTo(filters.created_to ?? '');
+        setCurrentPage(1);
     }, [
-        filters.name,
-        filters.description,
-        filters.total_min,
-        filters.total_max,
-        filters.transactions_min,
-        filters.transactions_max,
-        filters.created_from,
-        filters.created_to,
+        nameSearch,
+        descriptionSearch,
+        totalMin,
+        totalMax,
+        transactionsMin,
+        transactionsMax,
+        createdFrom,
+        createdTo,
     ]);
 
-    const handleNameChange = useCallback(
-        (value) => {
-            setNameSearch(value);
-            if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
-            nameTimeoutRef.current = setTimeout(() => {
-                applyFilters({ ...filters, name: value || undefined });
-            }, 300);
-        },
-        [filters],
-    );
-
-    const handleDescriptionChange = useCallback(
-        (value) => {
-            setDescriptionSearch(value);
-            if (descTimeoutRef.current) clearTimeout(descTimeoutRef.current);
-            descTimeoutRef.current = setTimeout(() => {
-                applyFilters({ ...filters, description: value || undefined });
-            }, 300);
-        },
-        [filters],
-    );
-
-    useEffect(() => {
-        return () => {
-            if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
-            if (descTimeoutRef.current) clearTimeout(descTimeoutRef.current);
-        };
-    }, []);
+    const start = (currentPage - 1) * perPage;
+    const paginatedFunds = filteredFunds.slice(start, start + perPage);
 
     const clearFilters = () => {
         setNameSearch('');
@@ -96,35 +95,19 @@ export default function Index({ funds, filters = {} }) {
         setTransactionsMax('');
         setCreatedFrom('');
         setCreatedTo('');
-        applyFilters({});
     };
-
-    const handleFilterChange = (key, value) => {
-        const setters = {
-            total_min: setTotalMin,
-            total_max: setTotalMax,
-            transactions_min: setTransactionsMin,
-            transactions_max: setTransactionsMax,
-            created_from: setCreatedFrom,
-            created_to: setCreatedTo,
-        };
-        setters[key]?.(value);
-        applyFilters({ ...filters, [key]: value || undefined });
-    };
-
-    const fundList = funds?.data ?? funds ?? [];
-    const total = funds?.total ?? fundList.length;
-    const hasFunds = total > 0;
 
     const hasActiveFilters =
-        filters.name ||
-        filters.description ||
-        filters.total_min ||
-        filters.total_max ||
-        filters.transactions_min ||
-        filters.transactions_max ||
-        filters.created_from ||
-        filters.created_to;
+        nameSearch ||
+        descriptionSearch ||
+        totalMin ||
+        totalMax ||
+        transactionsMin ||
+        transactionsMax ||
+        createdFrom ||
+        createdTo;
+
+    const hasFilteredResults = filteredFunds.length > 0;
 
     return (
         <AuthenticatedLayout
@@ -143,53 +126,55 @@ export default function Index({ funds, filters = {} }) {
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    {hasFunds && (
+                    {allFunds.length > 0 && (
                         <FundFilters
                             nameSearch={nameSearch}
-                            onNameSearchChange={handleNameChange}
+                            onNameSearchChange={(v) => setNameSearch(v)}
                             descriptionSearch={descriptionSearch}
-                            onDescriptionSearchChange={handleDescriptionChange}
+                            onDescriptionSearchChange={(v) => setDescriptionSearch(v)}
                             totalMin={totalMin}
-                            onTotalMinChange={(v) => handleFilterChange('total_min', v)}
+                            onTotalMinChange={(v) => setTotalMin(v)}
                             totalMax={totalMax}
-                            onTotalMaxChange={(v) => handleFilterChange('total_max', v)}
+                            onTotalMaxChange={(v) => setTotalMax(v)}
                             transactionsMin={transactionsMin}
-                            onTransactionsMinChange={(v) => handleFilterChange('transactions_min', v)}
+                            onTransactionsMinChange={(v) => setTransactionsMin(v)}
                             transactionsMax={transactionsMax}
-                            onTransactionsMaxChange={(v) => handleFilterChange('transactions_max', v)}
+                            onTransactionsMaxChange={(v) => setTransactionsMax(v)}
                             createdFrom={createdFrom}
-                            onCreatedFromChange={(v) => handleFilterChange('created_from', v)}
+                            onCreatedFromChange={(v) => setCreatedFrom(v)}
                             createdTo={createdTo}
-                            onCreatedToChange={(v) => handleFilterChange('created_to', v)}
+                            onCreatedToChange={(v) => setCreatedTo(v)}
                             onClear={clearFilters}
-                            resultCount={total}
+                            resultCount={filteredFunds.length}
                         />
                     )}
-                    {fundList.length === 0 ? (
+                    {!hasFilteredResults ? (
                         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
                             <p className="text-lg text-gray-500 dark:text-slate-400">
-                                {!hasActiveFilters
+                                {allFunds.length === 0 && !hasActiveFilters
                                     ? 'No funds yet. Create your first fund to get started.'
                                     : 'No funds match your filters.'}
                             </p>
-                            {!hasActiveFilters && (
-                                <Link href={route('funds.create')} className="mt-4 inline-block">
-                                    <PrimaryButton>Create Fund</PrimaryButton>
-                                </Link>
-                            )}
+                            {allFunds.length === 0 && !hasActiveFilters && (
+                                    <Link href={route('funds.create')} className="mt-4 inline-block">
+                                        <PrimaryButton>Create Fund</PrimaryButton>
+                                    </Link>
+                                )}
                         </div>
                     ) : (
                         <>
                             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                {fundList.map((fund) => (
+                                {paginatedFunds.map((fund) => (
                                     <FundCard key={fund.id} fund={fund} />
                                 ))}
                             </div>
-                            {funds?.links && (
-                                <div className="mt-6 flex justify-center">
-                                    <Pagination links={funds.links} only={['funds', 'filters']} />
-                                </div>
-                            )}
+                            <ClientPagination
+                                totalItems={filteredFunds.length}
+                                perPage={perPage}
+                                currentPage={currentPage}
+                                onPageChange={setCurrentPage}
+                                className="mt-6"
+                            />
                         </>
                     )}
                 </div>

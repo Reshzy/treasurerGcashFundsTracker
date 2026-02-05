@@ -14,33 +14,16 @@ class FundController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
         $user = Auth::user();
-        $name = $request->input('name');
-        $description = $request->input('description');
-        $totalMin = $request->input('total_min');
-        $totalMax = $request->input('total_max');
-        $transactionsMin = $request->input('transactions_min');
-        $transactionsMax = $request->input('transactions_max');
-        $createdFrom = $request->input('created_from');
-        $createdTo = $request->input('created_to');
 
         $funds = $user->funds()
             ->with(['creator', 'transactions'])
             ->withCount('transactions')
-            ->when($name, fn ($q) => $q->where('funds.name', 'like', '%'.trim($name).'%'))
-            ->when($description, fn ($q) => $q->where('funds.description', 'like', '%'.trim($description).'%'))
-            ->when($totalMin !== null && $totalMin !== '', fn ($q) => $q->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transactions.fund_id = funds.id) >= ?', [(float) $totalMin]))
-            ->when($totalMax !== null && $totalMax !== '', fn ($q) => $q->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transactions.fund_id = funds.id) <= ?', [(float) $totalMax]))
-            ->when($transactionsMin !== null && $transactionsMin !== '', fn ($q) => $q->having('transactions_count', '>=', (int) $transactionsMin))
-            ->when($transactionsMax !== null && $transactionsMax !== '', fn ($q) => $q->having('transactions_count', '<=', (int) $transactionsMax))
-            ->when($createdFrom, fn ($q) => $q->whereDate('funds.created_at', '>=', $createdFrom))
-            ->when($createdTo, fn ($q) => $q->whereDate('funds.created_at', '<=', $createdTo))
             ->orderBy('funds.name')
-            ->paginate(15)
-            ->withQueryString()
-            ->through(function ($fund) {
+            ->get()
+            ->map(function ($fund) {
                 return [
                     'id' => $fund->id,
                     'name' => $fund->name,
@@ -52,11 +35,12 @@ class FundController extends Controller
                     'created_at' => $fund->created_at->format('Y-m-d'),
                     'created_at_formatted' => $fund->created_at->format('M j, Y g:i A'),
                 ];
-            });
+            })
+            ->values()
+            ->all();
 
         return Inertia::render('Funds/Index', [
             'funds' => $funds,
-            'filters' => $request->only(['name', 'description', 'total_min', 'total_max', 'transactions_min', 'transactions_max', 'created_from', 'created_to']),
         ]);
     }
 

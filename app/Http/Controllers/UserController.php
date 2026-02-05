@@ -14,45 +14,24 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $name = $request->input('name');
-        $email = $request->input('email');
-        $role = $request->input('role');
-        $createdFrom = $request->input('created_from');
-        $createdTo = $request->input('created_to');
-        $sort = $request->input('sort', 'name');
-        $dir = $request->input('dir', 'asc');
-
-        $sortColumn = in_array($sort, ['name', 'email', 'created_at']) ? $sort : 'name';
-        $sortDir = $dir === 'desc' ? 'desc' : 'asc';
-        if ($sort === 'role') {
-            $sortColumn = 'is_admin';
-            $sortDir = $dir === 'desc' ? 'desc' : 'asc';
-        }
-
         $users = User::query()
-            ->when($name, fn ($q) => $q->where('name', 'like', '%'.trim($name).'%'))
-            ->when($email, fn ($q) => $q->where('email', 'like', '%'.trim($email).'%'))
-            ->when($role === 'admin', fn ($q) => $q->where('is_admin', true))
-            ->when($role === 'user', fn ($q) => $q->where('is_admin', false))
-            ->when($createdFrom, fn ($q) => $q->whereDate('created_at', '>=', $createdFrom))
-            ->when($createdTo, fn ($q) => $q->whereDate('created_at', '<=', $createdTo))
-            ->orderBy($sortColumn, $sortDir)
-            ->paginate(15)
-            ->withQueryString()
-            ->through(fn ($user) => [
+            ->orderBy('name', 'asc')
+            ->get()
+            ->map(fn ($user) => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'is_admin' => $user->is_admin,
                 'created_at' => $user->created_at->format('Y-m-d'),
                 'created_at_formatted' => $user->created_at->format('M j, Y g:i A'),
-            ]);
+            ])
+            ->values()
+            ->all();
 
         return Inertia::render('Users/Index', [
             'users' => $users,
-            'filters' => $request->only(['name', 'email', 'role', 'created_from', 'created_to', 'sort', 'dir']),
         ]);
     }
 

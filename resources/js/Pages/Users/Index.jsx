@@ -1,80 +1,94 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ClientPagination from '@/Components/ClientPagination';
 import UserFilters from '@/Components/UserFilters';
-import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
-function applyFilters(params) {
-    const { page, ...rest } = params;
-    const activeElement = document.activeElement;
-    router.get(route('users.index'), Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')), {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-        only: ['users', 'filters'],
-        onFinish: () => {
-            if (activeElement && typeof activeElement.focus === 'function' && document.contains(activeElement)) {
-                activeElement.focus();
-            }
-        },
+function filterUsers(users, filters) {
+    const {
+        nameSearch = '',
+        emailSearch = '',
+        roleFilter = '',
+        createdFrom = '',
+        createdTo = '',
+    } = filters;
+
+    return users.filter((u) => {
+        const nameMatch = !nameSearch.trim() || (u.name?.toLowerCase().includes(nameSearch.toLowerCase()));
+        const emailMatch = !emailSearch.trim()
+            || ((u.email ?? '').toLowerCase().includes(emailSearch.toLowerCase()));
+        const roleMatch =
+            !roleFilter ||
+            (roleFilter === 'admin' && u.is_admin) ||
+            (roleFilter === 'user' && !u.is_admin);
+        const createdDate = String(u.created_at || '').slice(0, 10);
+        const createdFromMatch = !createdFrom || createdDate >= createdFrom;
+        const createdToMatch = !createdTo || createdDate <= createdTo;
+
+        return nameMatch && emailMatch && roleMatch && createdFromMatch && createdToMatch;
     });
 }
 
-export default function Index({ users, filters = {} }) {
+function sortUsers(users, sortBy, sortDir) {
+    const dir = sortDir === 'desc' ? -1 : 1;
+    return [...users].sort((a, b) => {
+        let cmp = 0;
+        if (sortBy === 'name') {
+            cmp = (a.name ?? '').localeCompare(b.name ?? '');
+        } else if (sortBy === 'email') {
+            cmp = (a.email ?? '').localeCompare(b.email ?? '');
+        } else if (sortBy === 'role') {
+            cmp = (a.is_admin ? 1 : 0) - (b.is_admin ? 1 : 0);
+        } else if (sortBy === 'created_at') {
+            cmp = (a.created_at ?? '').localeCompare(b.created_at ?? '');
+        }
+        return cmp * dir;
+    });
+}
+
+export default function Index({ users = [] }) {
     const currentUserId = usePage().props.auth?.user?.id;
-    const [nameSearch, setNameSearch] = useState(filters.name ?? '');
-    const [emailSearch, setEmailSearch] = useState(filters.email ?? '');
-    const [roleFilter, setRoleFilter] = useState(filters.role ?? '');
-    const [createdFrom, setCreatedFrom] = useState(filters.created_from ?? '');
-    const [createdTo, setCreatedTo] = useState(filters.created_to ?? '');
-    const nameTimeoutRef = useRef(null);
-    const emailTimeoutRef = useRef(null);
+    const [nameSearch, setNameSearch] = useState('');
+    const [emailSearch, setEmailSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState('');
+    const [createdFrom, setCreatedFrom] = useState('');
+    const [createdTo, setCreatedTo] = useState('');
+    const [sortBy, setSortBy] = useState('name');
+    const [sortDir, setSortDir] = useState('asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage] = useState(15);
+
+    const allUsers = Array.isArray(users) ? users : [];
+    const filteredUsers = filterUsers(allUsers, {
+        nameSearch,
+        emailSearch,
+        roleFilter,
+        createdFrom,
+        createdTo,
+    });
+    const sortedUsers = sortUsers(filteredUsers, sortBy, sortDir);
 
     useEffect(() => {
-        setNameSearch(filters.name ?? '');
-        setEmailSearch(filters.email ?? '');
-        setRoleFilter(filters.role ?? '');
-        setCreatedFrom(filters.created_from ?? '');
-        setCreatedTo(filters.created_to ?? '');
-    }, [filters.name, filters.email, filters.role, filters.created_from, filters.created_to]);
+        setCurrentPage(1);
+    }, [
+        nameSearch,
+        emailSearch,
+        roleFilter,
+        createdFrom,
+        createdTo,
+        sortBy,
+        sortDir,
+    ]);
 
-    const sortBy = filters.sort ?? 'name';
-    const sortDir = filters.dir ?? 'asc';
-
-    const handleNameChange = useCallback(
-        (value) => {
-            setNameSearch(value);
-            if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
-            nameTimeoutRef.current = setTimeout(() => {
-                applyFilters({ ...filters, name: value || undefined, page: undefined });
-            }, 300);
-        },
-        [filters],
-    );
-
-    const handleEmailChange = useCallback(
-        (value) => {
-            setEmailSearch(value);
-            if (emailTimeoutRef.current) clearTimeout(emailTimeoutRef.current);
-            emailTimeoutRef.current = setTimeout(() => {
-                applyFilters({ ...filters, email: value || undefined, page: undefined });
-            }, 300);
-        },
-        [filters],
-    );
-
-    useEffect(() => {
-        return () => {
-            if (nameTimeoutRef.current) clearTimeout(nameTimeoutRef.current);
-            if (emailTimeoutRef.current) clearTimeout(emailTimeoutRef.current);
-        };
-    }, []);
+    const start = (currentPage - 1) * perPage;
+    const paginatedUsers = sortedUsers.slice(start, start + perPage);
 
     const handleSort = (column) => {
         const newDir = sortBy === column && sortDir === 'asc' ? 'desc' : 'asc';
-        applyFilters({ ...filters, sort: column, dir: newDir, page: undefined });
+        setSortBy(column);
+        setSortDir(newDir);
     };
 
     const SortIcon = ({ column }) => {
@@ -92,22 +106,6 @@ export default function Index({ users, filters = {} }) {
         setRoleFilter('');
         setCreatedFrom('');
         setCreatedTo('');
-        applyFilters({});
-    };
-
-    const handleRoleChange = (value) => {
-        setRoleFilter(value);
-        applyFilters({ ...filters, role: value || undefined, page: undefined });
-    };
-
-    const handleCreatedFromChange = (value) => {
-        setCreatedFrom(value);
-        applyFilters({ ...filters, created_from: value || undefined, page: undefined });
-    };
-
-    const handleCreatedToChange = (value) => {
-        setCreatedTo(value);
-        applyFilters({ ...filters, created_to: value || undefined, page: undefined });
     };
 
     const handleDelete = (user) => {
@@ -120,9 +118,8 @@ export default function Index({ users, filters = {} }) {
         }
     };
 
-    const userList = users?.data ?? users ?? [];
-    const total = users?.total ?? userList.length;
-    const hasUsers = total > 0;
+    const hasUsers = allUsers.length > 0;
+    const hasFilteredResults = filteredUsers.length > 0;
 
     return (
         <AuthenticatedLayout
@@ -144,41 +141,41 @@ export default function Index({ users, filters = {} }) {
                     {hasUsers && (
                         <UserFilters
                             nameSearch={nameSearch}
-                            onNameSearchChange={handleNameChange}
+                            onNameSearchChange={(v) => setNameSearch(v)}
                             emailSearch={emailSearch}
-                            onEmailSearchChange={handleEmailChange}
+                            onEmailSearchChange={(v) => setEmailSearch(v)}
                             roleFilter={roleFilter}
-                            onRoleFilterChange={handleRoleChange}
+                            onRoleFilterChange={(v) => setRoleFilter(v)}
                             createdFrom={createdFrom}
-                            onCreatedFromChange={handleCreatedFromChange}
+                            onCreatedFromChange={(v) => setCreatedFrom(v)}
                             createdTo={createdTo}
-                            onCreatedToChange={handleCreatedToChange}
+                            onCreatedToChange={(v) => setCreatedTo(v)}
                             onClear={clearFilters}
-                            resultCount={total}
+                            resultCount={filteredUsers.length}
                         />
                     )}
-                    {userList.length === 0 ? (
+                    {!hasFilteredResults ? (
                         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-800">
                             <p className="text-lg text-gray-500 dark:text-slate-400">
-                                {total === 0 &&
-                                !filters.name &&
-                                !filters.email &&
-                                !filters.role &&
-                                !filters.created_from &&
-                                !filters.created_to
+                                {allUsers.length === 0 &&
+                                !nameSearch &&
+                                !emailSearch &&
+                                !roleFilter &&
+                                !createdFrom &&
+                                !createdTo
                                     ? 'No users yet.'
                                     : 'No users match your filters.'}
                             </p>
-                            {total === 0 &&
-                                !filters.name &&
-                                !filters.email &&
-                                !filters.role &&
-                                !filters.created_from &&
-                                !filters.created_to && (
-                                <Link href={route('users.create')} className="mt-4 inline-block">
-                                    <PrimaryButton>Create User</PrimaryButton>
-                                </Link>
-                            )}
+                            {allUsers.length === 0 &&
+                                !nameSearch &&
+                                !emailSearch &&
+                                !roleFilter &&
+                                !createdFrom &&
+                                !createdTo && (
+                                    <Link href={route('users.create')} className="mt-4 inline-block">
+                                        <PrimaryButton>Create User</PrimaryButton>
+                                    </Link>
+                                )}
                         </div>
                     ) : (
                         <>
@@ -232,7 +229,7 @@ export default function Index({ users, filters = {} }) {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-700 dark:bg-slate-800">
-                                        {userList.map((user) => (
+                                        {paginatedUsers.map((user) => (
                                             <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
                                                 <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-slate-300">
                                                     {user.name}
@@ -275,11 +272,13 @@ export default function Index({ users, filters = {} }) {
                                     </tbody>
                                 </table>
                             </div>
-                            {users?.links && (
-                                <div className="mt-4 flex justify-center">
-                                    <Pagination links={users.links} only={['users', 'filters']} />
-                                </div>
-                            )}
+                            <ClientPagination
+                                totalItems={filteredUsers.length}
+                                perPage={perPage}
+                                currentPage={currentPage}
+                                onPageChange={setCurrentPage}
+                                className="mt-4"
+                            />
                         </>
                     )}
                 </div>
