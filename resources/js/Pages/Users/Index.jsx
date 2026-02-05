@@ -8,9 +8,17 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 
 function applyFilters(params) {
     const { page, ...rest } = params;
+    const activeElement = document.activeElement;
     router.get(route('users.index'), Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')), {
         preserveState: true,
         preserveScroll: true,
+        replace: true,
+        only: ['users', 'filters'],
+        onFinish: () => {
+            if (activeElement && typeof activeElement.focus === 'function' && document.contains(activeElement)) {
+                activeElement.focus();
+            }
+        },
     });
 }
 

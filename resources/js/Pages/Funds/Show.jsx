@@ -18,12 +18,20 @@ const selectClasses =
 
 function applyFilters(fundId, params) {
     const { page, ...rest } = params;
+    const activeElement = document.activeElement;
     router.get(
         route('funds.show', fundId),
         Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')),
         {
             preserveState: true,
             preserveScroll: true,
+            replace: true,
+            only: ['transactions', 'filters'],
+            onFinish: () => {
+                if (activeElement && typeof activeElement.focus === 'function' && document.contains(activeElement)) {
+                    activeElement.focus();
+                }
+            },
         },
     );
 }
