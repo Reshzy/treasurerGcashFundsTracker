@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ClientPagination from '@/Components/ClientPagination';
 import TransactionList from '@/Components/TransactionList';
 import TransactionFilters from '@/Components/TransactionFilters';
 import TransactionForm from '@/Components/TransactionForm';
@@ -59,6 +60,8 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
     const [createdTo, setCreatedTo] = useState('');
     const [amountMin, setAmountMin] = useState('');
     const [amountMax, setAmountMax] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage] = useState(12);
 
     const allTransactions = Array.isArray(transactions) ? transactions : [];
     const filteredTransactions = filterTransactions(allTransactions, {
@@ -72,6 +75,23 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
         amountMin,
         amountMax,
     });
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [
+        senderSearch,
+        notesSearch,
+        categorySearch,
+        dateFrom,
+        dateTo,
+        createdFrom,
+        createdTo,
+        amountMin,
+        amountMax,
+    ]);
+
+    const start = (currentPage - 1) * perPage;
+    const paginatedTransactions = filteredTransactions.slice(start, start + perPage);
 
     const handleSenderSearchChange = (value) => setSenderSearch(value);
     const handleNotesSearchChange = (value) => setNotesSearch(value);
@@ -335,11 +355,18 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
 
                     {/* Transactions */}
                     <TransactionList
-                        transactions={filteredTransactions}
+                        transactions={paginatedTransactions}
                         fundId={fund.id}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         canEdit={canEdit}
+                    />
+                    <ClientPagination
+                        totalItems={filteredTransactions.length}
+                        perPage={perPage}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                        className="mt-4"
                     />
                 </div>
             </div>
