@@ -118,37 +118,12 @@ class FundController extends Controller
             abort(403, 'You do not have access to this fund.');
         }
 
-        $senderSearch = $request->input('sender_search');
-        $notes = $request->input('notes');
-        $category = $request->input('category');
-        $dateFrom = $request->input('date_from');
-        $dateTo = $request->input('date_to');
-        $createdFrom = $request->input('created_from');
-        $createdTo = $request->input('created_to');
-        $amountMin = $request->input('amount_min');
-        $amountMax = $request->input('amount_max');
-
-        $searchTerm = $senderSearch ? '%'.trim($senderSearch).'%' : null;
-
         $transactions = $fund->transactions()
             ->with(['sender.members', 'creator'])
             ->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->when($searchTerm, fn ($q) => $q->whereHas('sender', function ($s) use ($searchTerm) {
-                $s->where('name', 'like', $searchTerm)
-                    ->orWhereHas('members', fn ($m) => $m->where('name', 'like', $searchTerm));
-            }))
-            ->when($notes, fn ($q) => $q->where('notes', 'like', '%'.trim($notes).'%'))
-            ->when($category, fn ($q) => $q->where('category', 'like', '%'.trim($category).'%'))
-            ->when($dateFrom, fn ($q) => $q->whereDate('date', '>=', $dateFrom))
-            ->when($dateTo, fn ($q) => $q->whereDate('date', '<=', $dateTo))
-            ->when($createdFrom, fn ($q) => $q->whereDate('created_at', '>=', $createdFrom))
-            ->when($createdTo, fn ($q) => $q->whereDate('created_at', '<=', $createdTo))
-            ->when($amountMin !== null && $amountMin !== '', fn ($q) => $q->where('amount', '>=', (float) $amountMin))
-            ->when($amountMax !== null && $amountMax !== '', fn ($q) => $q->where('amount', '<=', (float) $amountMax))
-            ->paginate(15)
-            ->withQueryString()
-            ->through(function ($transaction) use ($user) {
+            ->get()
+            ->map(function ($transaction) use ($user) {
                 return [
                     'id' => $transaction->id,
                     'amount' => $transaction->amount,
@@ -168,7 +143,9 @@ class FundController extends Controller
                     'created_at' => $transaction->created_at->format('Y-m-d H:i'),
                     'created_at_formatted' => $transaction->created_at->format('M j, Y g:i A'),
                 ];
-            });
+            })
+            ->values()
+            ->all();
 
         // Get senders for the transaction form (with members for group display)
         $senders = Sender::where('created_by', $user->id)
@@ -218,11 +195,6 @@ class FundController extends Controller
             'transactions' => $transactions,
             'senders' => $senders,
             'savedMemberNames' => $savedMemberNames,
-            'filters' => $request->only([
-                'sender_search', 'notes', 'category',
-                'date_from', 'date_to', 'created_from', 'created_to',
-                'amount_min', 'amount_max',
-            ]),
         ]);
     }
 

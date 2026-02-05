@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import TransactionList from '@/Components/TransactionList';
 import TransactionFilters from '@/Components/TransactionFilters';
 import TransactionForm from '@/Components/TransactionForm';
-import Pagination from '@/Components/Pagination';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
@@ -16,104 +15,67 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 const selectClasses =
     'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100';
 
-function applyFilters(fundId, params) {
-    const { page, ...rest } = params;
-    const activeElement = document.activeElement;
-    router.get(
-        route('funds.show', fundId),
-        Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')),
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            only: ['transactions', 'filters'],
-            onFinish: () => {
-                if (activeElement && typeof activeElement.focus === 'function' && document.contains(activeElement)) {
-                    activeElement.focus();
-                }
-            },
-        },
-    );
+function filterTransactions(transactions, filters) {
+    const {
+        senderSearch = '',
+        notesSearch = '',
+        categorySearch = '',
+        dateFrom = '',
+        dateTo = '',
+        createdFrom = '',
+        createdTo = '',
+        amountMin = '',
+        amountMax = '',
+    } = filters;
+
+    return transactions.filter((t) => {
+        const senderMatch = !senderSearch.trim()
+            || (t.sender?.name?.toLowerCase().includes(senderSearch.toLowerCase()))
+            || (t.sender?.members?.some((m) => m?.toLowerCase().includes(senderSearch.toLowerCase())));
+        const notesMatch = !notesSearch.trim() || (t.notes?.toLowerCase().includes(notesSearch.toLowerCase()));
+        const categoryMatch = !categorySearch.trim() || (t.category?.toLowerCase().includes(categorySearch.toLowerCase()));
+        const dateFromMatch = !dateFrom || t.date >= dateFrom;
+        const dateToMatch = !dateTo || t.date <= dateTo;
+        const createdDate = String(t.created_at || '').slice(0, 10);
+        const createdFromMatch = !createdFrom || createdDate >= createdFrom;
+        const createdToMatch = !createdTo || createdDate <= createdTo;
+        const amountMinMatch = amountMin === '' || Number(t.amount) >= Number(amountMin);
+        const amountMaxMatch = amountMax === '' || Number(t.amount) <= Number(amountMax);
+
+        return senderMatch && notesMatch && categoryMatch && dateFromMatch && dateToMatch
+            && createdFromMatch && createdToMatch && amountMinMatch && amountMaxMatch;
+    });
 }
 
-export default function Show({ fund, transactions, senders, savedMemberNames = [], users = [], filters = {} }) {
+export default function Show({ fund, transactions, senders, savedMemberNames = [], users = [] }) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
-    const [senderSearch, setSenderSearch] = useState(filters.sender_search ?? '');
-    const [notesSearch, setNotesSearch] = useState(filters.notes ?? '');
-    const [categorySearch, setCategorySearch] = useState(filters.category ?? '');
-    const [dateFrom, setDateFrom] = useState(filters.date_from ?? '');
-    const [dateTo, setDateTo] = useState(filters.date_to ?? '');
-    const [createdFrom, setCreatedFrom] = useState(filters.created_from ?? '');
-    const [createdTo, setCreatedTo] = useState(filters.created_to ?? '');
-    const [amountMin, setAmountMin] = useState(filters.amount_min ?? '');
-    const [amountMax, setAmountMax] = useState(filters.amount_max ?? '');
-    const senderTimeoutRef = useRef(null);
-    const notesTimeoutRef = useRef(null);
-    const categoryTimeoutRef = useRef(null);
+    const [senderSearch, setSenderSearch] = useState('');
+    const [notesSearch, setNotesSearch] = useState('');
+    const [categorySearch, setCategorySearch] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [createdFrom, setCreatedFrom] = useState('');
+    const [createdTo, setCreatedTo] = useState('');
+    const [amountMin, setAmountMin] = useState('');
+    const [amountMax, setAmountMax] = useState('');
 
-    useEffect(() => {
-        setSenderSearch(filters.sender_search ?? '');
-        setNotesSearch(filters.notes ?? '');
-        setCategorySearch(filters.category ?? '');
-        setDateFrom(filters.date_from ?? '');
-        setDateTo(filters.date_to ?? '');
-        setCreatedFrom(filters.created_from ?? '');
-        setCreatedTo(filters.created_to ?? '');
-        setAmountMin(filters.amount_min ?? '');
-        setAmountMax(filters.amount_max ?? '');
-    }, [
-        filters.sender_search,
-        filters.notes,
-        filters.category,
-        filters.date_from,
-        filters.date_to,
-        filters.created_from,
-        filters.created_to,
-        filters.amount_min,
-        filters.amount_max,
-    ]);
+    const allTransactions = Array.isArray(transactions) ? transactions : [];
+    const filteredTransactions = filterTransactions(allTransactions, {
+        senderSearch,
+        notesSearch,
+        categorySearch,
+        dateFrom,
+        dateTo,
+        createdFrom,
+        createdTo,
+        amountMin,
+        amountMax,
+    });
 
-    const handleSenderSearchChange = useCallback(
-        (value) => {
-            setSenderSearch(value);
-            if (senderTimeoutRef.current) clearTimeout(senderTimeoutRef.current);
-            senderTimeoutRef.current = setTimeout(() => {
-                applyFilters(fund.id, { ...filters, sender_search: value || undefined });
-            }, 300);
-        },
-        [fund.id, filters],
-    );
-
-    const handleNotesSearchChange = useCallback(
-        (value) => {
-            setNotesSearch(value);
-            if (notesTimeoutRef.current) clearTimeout(notesTimeoutRef.current);
-            notesTimeoutRef.current = setTimeout(() => {
-                applyFilters(fund.id, { ...filters, notes: value || undefined });
-            }, 300);
-        },
-        [fund.id, filters],
-    );
-
-    const handleCategorySearchChange = useCallback(
-        (value) => {
-            setCategorySearch(value);
-            if (categoryTimeoutRef.current) clearTimeout(categoryTimeoutRef.current);
-            categoryTimeoutRef.current = setTimeout(() => {
-                applyFilters(fund.id, { ...filters, category: value || undefined });
-            }, 300);
-        },
-        [fund.id, filters],
-    );
-
-    useEffect(() => {
-        return () => {
-            if (senderTimeoutRef.current) clearTimeout(senderTimeoutRef.current);
-            if (notesTimeoutRef.current) clearTimeout(notesTimeoutRef.current);
-            if (categoryTimeoutRef.current) clearTimeout(categoryTimeoutRef.current);
-        };
-    }, []);
+    const handleSenderSearchChange = (value) => setSenderSearch(value);
+    const handleNotesSearchChange = (value) => setNotesSearch(value);
+    const handleCategorySearchChange = (value) => setCategorySearch(value);
 
     const clearFilters = () => {
         setSenderSearch('');
@@ -125,7 +87,6 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
         setCreatedTo('');
         setAmountMin('');
         setAmountMax('');
-        applyFilters(fund.id, {});
     };
 
     const handleFilterChange = (key, value) => {
@@ -138,7 +99,6 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
             amount_max: setAmountMax,
         };
         setters[key]?.(value);
-        applyFilters(fund.id, { ...filters, [key]: value || undefined });
     };
 
     const formatCurrency = (amount) => {
@@ -194,18 +154,16 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
         });
     };
 
-    const transactionList = transactions?.data ?? transactions ?? [];
-    const transactionTotal = transactions?.total ?? transactionList.length;
     const hasActiveFilters =
-        filters.sender_search ||
-        filters.notes ||
-        filters.category ||
-        filters.date_from ||
-        filters.date_to ||
-        filters.created_from ||
-        filters.created_to ||
-        filters.amount_min ||
-        filters.amount_max;
+        senderSearch ||
+        notesSearch ||
+        categorySearch ||
+        dateFrom ||
+        dateTo ||
+        createdFrom ||
+        createdTo ||
+        amountMin ||
+        amountMax;
 
     return (
         <AuthenticatedLayout
@@ -251,7 +209,7 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                                 <div className="text-right">
                                     <p className="text-sm font-medium text-gray-500 dark:text-slate-400">Transactions</p>
                                     <p className="mt-1 text-3xl font-bold text-gray-700 dark:text-slate-300">
-                                        {transactionTotal}
+                                        {filteredTransactions.length}
                                     </p>
                                 </div>
                             </div>
@@ -372,22 +330,17 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                         amountMax={amountMax}
                         onAmountMaxChange={(v) => handleFilterChange('amount_max', v)}
                         onClear={clearFilters}
-                        resultCount={transactionTotal}
+                        resultCount={filteredTransactions.length}
                     />
 
                     {/* Transactions */}
                     <TransactionList
-                        transactions={transactionList}
+                        transactions={filteredTransactions}
                         fundId={fund.id}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         canEdit={canEdit}
                     />
-                    {transactions?.links && (
-                        <div className="mt-4 flex justify-center">
-                            <Pagination links={transactions.links} only={['transactions', 'filters']} />
-                        </div>
-                    )}
                 </div>
             </div>
 
