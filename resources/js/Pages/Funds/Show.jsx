@@ -22,7 +22,7 @@ function applyFilters(fundId, params) {
         route('funds.show', fundId),
         Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')),
         {
-            preserveState: false,
+            preserveState: true,
             preserveScroll: true,
         },
     );
@@ -348,7 +348,7 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                         senderSearch={senderSearch}
                         onSenderSearchChange={handleSenderSearchChange}
                         notesSearch={notesSearch}
-                        onNotesSearchChange={(e) => handleNotesSearchChange(e.target.value)}
+                        onNotesSearchChange={handleNotesSearchChange}
                         categorySearch={categorySearch}
                         onCategorySearchChange={handleCategorySearchChange}
                         dateFrom={dateFrom}

@@ -9,7 +9,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 function applyFilters(params) {
     const { page, ...rest } = params;
     router.get(route('users.index'), Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')), {
-        preserveState: false,
+        preserveState: true,
         preserveScroll: true,
     });
 }

@@ -12,7 +12,7 @@ function applyFilters(params) {
         route('funds.index'),
         Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null && v !== '')),
         {
-            preserveState: false,
+            preserveState: true,
             preserveScroll: true,
         },
     );
