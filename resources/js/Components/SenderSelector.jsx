@@ -3,6 +3,8 @@ import TextInput from './TextInput';
 import InputLabel from './InputLabel';
 import PrimaryButton from './PrimaryButton';
 
+const SAVED_NAME_FILTER_DEBOUNCE_MS = 250;
+
 const isEditOnlyMode = (allowEditSender, senderForEdit) =>
     allowEditSender && senderForEdit && senderForEdit.can_edit;
 
@@ -24,6 +26,10 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
             ? [...senderForEdit.members]
             : ['']
     );
+    const [individualSavedNameSearch, setIndividualSavedNameSearch] = useState('');
+    const [debouncedIndividualSavedNameSearch, setDebouncedIndividualSavedNameSearch] = useState('');
+    const [groupMemberSavedNameSearch, setGroupMemberSavedNameSearch] = useState('');
+    const [debouncedGroupMemberSavedNameSearch, setDebouncedGroupMemberSavedNameSearch] = useState('');
 
     const filteredSenders = senders.filter((sender) =>
         sender.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -32,6 +38,34 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
     const selectedSender = senders.find((s) => s.id.toString() === value?.toString()) ?? (senderForEdit && value?.toString() === senderForEdit.id?.toString() ? senderForEdit : null);
 
     const showEditSenderOption = allowEditSender && senderForEdit && value?.toString() === senderForEdit.id?.toString() && senderForEdit.can_edit;
+
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            setDebouncedIndividualSavedNameSearch(individualSavedNameSearch);
+        }, SAVED_NAME_FILTER_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [individualSavedNameSearch]);
+
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            setDebouncedGroupMemberSavedNameSearch(groupMemberSavedNameSearch);
+        }, SAVED_NAME_FILTER_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [groupMemberSavedNameSearch]);
+
+    const normalizedIndividualSavedNameSearch = debouncedIndividualSavedNameSearch.trim().toLowerCase();
+    const filteredIndividualSavedNames = normalizedIndividualSavedNameSearch
+        ? savedMemberNames.filter((savedName) =>
+            savedName.toLowerCase().includes(normalizedIndividualSavedNameSearch))
+        : savedMemberNames;
+
+    const normalizedGroupMemberSavedNameSearch = debouncedGroupMemberSavedNameSearch.trim().toLowerCase();
+    const filteredGroupMemberSavedNames = normalizedGroupMemberSavedNameSearch
+        ? savedMemberNames.filter((savedName) =>
+            savedName.toLowerCase().includes(normalizedGroupMemberSavedNameSearch))
+        : savedMemberNames;
 
     // Sync state and parent form data when entering edit-only mode (e.g. opening Edit Transaction)
     useEffect(() => {
@@ -60,6 +94,8 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
             onChange(value);
             onNewSenderChange?.(null);
             onEditSenderChange?.(null);
+            setIndividualSavedNameSearch('');
+            setGroupMemberSavedNameSearch('');
         } else if (newMode === 'create') {
             onChange('');
             setNewSenderName('');
@@ -67,10 +103,14 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
             setSenderType('individual');
             onNewSenderChange(null);
             onEditSenderChange?.(null);
+            setIndividualSavedNameSearch('');
+            setGroupMemberSavedNameSearch('');
         } else if (newMode === 'edit' && senderForEdit) {
             setNewSenderName(senderForEdit.name ?? '');
             setSenderType(senderForEdit.type ?? 'individual');
             setMemberNames(senderForEdit.type === 'group' && senderForEdit.members?.length ? [...senderForEdit.members] : ['']);
+            setIndividualSavedNameSearch('');
+            setGroupMemberSavedNameSearch('');
             const payload = {
                 name: senderForEdit.name ?? '',
                 type: senderForEdit.type ?? 'individual',
@@ -161,6 +201,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                 member_names: validMembers,
             });
         }
+        setGroupMemberSavedNameSearch('');
     };
 
     const handleSelectIndividualSavedName = (name) => {
@@ -170,6 +211,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
         }
 
         setNewSenderName(trimmed);
+        setIndividualSavedNameSearch(trimmed);
         notifySenderChange({
             name: trimmed,
             type: 'individual',
@@ -216,6 +258,8 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                                 const newType = e.target.value;
                                 setSenderType(newType);
                                 setMemberNames(['']);
+                                setIndividualSavedNameSearch('');
+                                setGroupMemberSavedNameSearch('');
                                 setTimeout(() => {
                                     if (newType === 'individual') {
                                         if (newSenderName.trim()) {
@@ -246,6 +290,8 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                                 if (memberNames.length === 0) {
                                     setMemberNames(['']);
                                 }
+                                setIndividualSavedNameSearch('');
+                                setGroupMemberSavedNameSearch('');
                             }}
                             className="mr-2"
                         />
@@ -264,6 +310,9 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                     onChange={(e) => {
                         const name = e.target.value;
                         setNewSenderName(name);
+                        if (senderType === 'individual') {
+                            setIndividualSavedNameSearch(name);
+                        }
                         setTimeout(() => {
                             if (senderType === 'individual') {
                                 if (name.trim()) {
@@ -297,7 +346,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                 <div>
                     <p className="mb-1.5 text-xs text-gray-500 dark:text-slate-400">Saved names (click to use)</p>
                     <div className="flex flex-wrap gap-1.5">
-                        {savedMemberNames.map((savedName) => {
+                        {filteredIndividualSavedNames.map((savedName) => {
                             const isActive = newSenderName.trim().toLowerCase() === savedName.trim().toLowerCase();
 
                             return (
@@ -316,6 +365,11 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                             );
                         })}
                     </div>
+                    {newSenderName.trim() && filteredIndividualSavedNames.length === 0 && (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                            No saved names matched your search.
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -336,7 +390,7 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                         <div className="mt-2">
                             <p className="mb-1.5 text-xs text-gray-500 dark:text-slate-400">Saved names (click to add)</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {savedMemberNames.map((savedName) => {
+                                {filteredGroupMemberSavedNames.map((savedName) => {
                                     const alreadyAdded = memberNames.map((n) => n.trim()).filter(Boolean).includes(savedName.trim());
                                     return (
                                         <button
@@ -351,6 +405,11 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                                     );
                                 })}
                             </div>
+                            {groupMemberSavedNameSearch.trim() && filteredGroupMemberSavedNames.length === 0 && (
+                                <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                                    No saved names matched your member search.
+                                </p>
+                            )}
                         </div>
                     )}
                     <div className="mt-2 space-y-2">
@@ -360,7 +419,11 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                                     type="text"
                                     value={name}
                                     onChange={(e) => {
+                                        setGroupMemberSavedNameSearch(e.target.value);
                                         handleMemberNameChange(index, e.target.value);
+                                    }}
+                                    onFocus={() => {
+                                        setGroupMemberSavedNameSearch(name);
                                     }}
                                     className="flex-1"
                                     placeholder={`Member ${index + 1} name...`}

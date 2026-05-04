@@ -448,10 +448,25 @@ class FundAccessTest extends TestCase
         $this->assertStringContainsString('w:left="720"', $documentXml);
         $this->assertStringContainsString('w:header="360"', $documentXml);
         $this->assertStringContainsString('w:footer="360"', $documentXml);
+        $this->assertStringContainsString('Summary', $documentXml);
+        $this->assertStringContainsString('Total paid amount: ₱700.00', $documentXml);
+        $this->assertStringContainsString('Total transactions: 2', $documentXml);
+        $this->assertStringContainsString('Per Transaction (2)', $documentXml);
+        $this->assertStringContainsString('Paid Amount', $documentXml);
+        $this->assertStringContainsString('Group Members', $documentXml);
+        $this->assertStringContainsString('Date Added (MM-DD-YYYY)', $documentXml);
+        $this->assertStringNotContainsString('Group Name', $documentXml);
+        $this->assertStringContainsString('w:spacing w:before="0" w:after="0"', $documentXml);
+        $this->assertStringContainsString('₱500.00', $documentXml);
+        $this->assertStringContainsString('₱200.00', $documentXml);
+        $this->assertMatchesRegularExpression('/<w:t[^>]*>• Alpha Member<\/w:t><\/w:r><w:br\/><w:r>.*?<w:t[^>]*>• Beta Member<\/w:t>/s', $documentXml);
+        $this->assertStringContainsString(now()->format('m-d-Y'), $documentXml);
         $this->assertStringContainsString('Weekend Squad', $documentXml);
         $this->assertStringContainsString('Alpha Member', $documentXml);
         $this->assertStringContainsString('Beta Member', $documentXml);
         $this->assertStringContainsString('Personal Wallet', $documentXml);
+        $this->assertStringContainsString('• Alpha Member', $documentXml);
+        $this->assertStringContainsString('• Beta Member', $documentXml);
 
         unlink($path);
     }
