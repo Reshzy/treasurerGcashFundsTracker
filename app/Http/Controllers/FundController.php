@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ExportFundTransactionsRequest;
 use App\Models\Fund;
 use App\Models\Sender;
 use App\Models\User;
@@ -347,7 +348,11 @@ class FundController extends Controller
         return redirect()->back()->with('success', 'Member removed successfully.');
     }
 
-    public function exportTransactions(Fund $fund, FundTransactionDocxExporter $exporter): BinaryFileResponse
+    public function exportTransactions(
+        ExportFundTransactionsRequest $request,
+        Fund $fund,
+        FundTransactionDocxExporter $exporter
+    ): BinaryFileResponse
     {
         $user = Auth::user();
         $hasAccess = $fund->members()->where('user_id', $user->id)->exists()
@@ -357,7 +362,14 @@ class FundController extends Controller
             abort(403, 'You do not have access to this fund.');
         }
 
-        $path = $exporter->export($fund, $user);
+        $categories = collect($request->validated('categories', []))
+            ->map(fn ($category) => trim((string) $category))
+            ->filter(fn ($category) => $category !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $path = $exporter->export($fund, $user, $categories);
         $safeFundName = Str::slug($fund->name);
         $filenamePrefix = $safeFundName !== '' ? $safeFundName : 'fund';
         $filename = $filenamePrefix.'-transactions-'.now()->format('Ymd').'.docx';

@@ -9,12 +9,18 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
-import { ArrowLeft, BarChart3, ChevronDown, ChevronUp, Download, LayoutGrid, PieChart } from 'lucide-react';
+import { ArrowLeft, BarChart3, ChevronDown, ChevronUp, Download, LayoutGrid, PieChart, X } from 'lucide-react';
 import axios from 'axios';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 
 const selectClasses =
     'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100';
+
+function normalizeCategoryLabel(value) {
+    const normalized = String(value ?? '').trim();
+
+    return normalized === '' ? 'Uncategorized' : normalized;
+}
 
 function filterTransactions(transactions, filters) {
     const {
@@ -448,6 +454,7 @@ function CategoryTotalsCards({ categoryTotals, formatCurrency }) {
 
 export default function Show({ fund, transactions, senders, savedMemberNames = [], users = [] }) {
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showExportOptionsModal, setShowExportOptionsModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [senderSearch, setSenderSearch] = useState('');
     const [notesSearch, setNotesSearch] = useState('');
@@ -464,6 +471,10 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
 
     const allTransactions = Array.isArray(transactions) ? transactions : [];
     const categoryTotals = Array.isArray(fund.category_totals) ? fund.category_totals : [];
+    const exportCategoryOptions = categoryTotals
+        .map((item) => normalizeCategoryLabel(item?.category))
+        .filter((value, index, array) => array.indexOf(value) === index);
+    const [selectedExportCategories, setSelectedExportCategories] = useState(exportCategoryOptions);
     const filteredTransactions = filterTransactions(allTransactions, {
         senderSearch,
         notesSearch,
@@ -567,6 +578,50 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
         }
     };
 
+    const openExportOptions = () => {
+        setSelectedExportCategories(exportCategoryOptions);
+        setShowExportOptionsModal(true);
+    };
+
+    const closeExportOptions = () => {
+        setShowExportOptionsModal(false);
+    };
+
+    const toggleExportCategory = (category) => {
+        setSelectedExportCategories((currentCategories) => {
+            if (currentCategories.includes(category)) {
+                return currentCategories.filter((currentCategory) => currentCategory !== category);
+            }
+
+            return [...currentCategories, category];
+        });
+    };
+
+    const buildExportUrl = (categories = selectedExportCategories) => {
+        const baseUrl = route('funds.transactions.export', fund.id);
+
+        if (categories.length === 0) {
+            return baseUrl;
+        }
+
+        const params = new URLSearchParams();
+        categories.forEach((category) => {
+            params.append('categories[]', category);
+        });
+
+        return `${baseUrl}?${params.toString()}`;
+    };
+
+    const exportWithSelectedCategories = () => {
+        window.location.href = buildExportUrl();
+        closeExportOptions();
+    };
+
+    const exportAllCategories = () => {
+        window.location.href = buildExportUrl([]);
+        closeExportOptions();
+    };
+
     const setHideAddMemberUi = (hide) => {
         setHideAddMemberUiState(hide);
         axios.patch(route('profile.add-member-ui.update'), { hide }).catch(() => {
@@ -604,13 +659,14 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                                 Back to Funds
                             </SecondaryButton>
                         </Link>
-                        <a
-                            href={route('funds.transactions.export', fund.id)}
+                        <button
+                            type="button"
+                            onClick={openExportOptions}
                             className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-indigo-700 shadow-sm transition duration-150 ease-in-out hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:border-indigo-500/60 dark:bg-indigo-500/20 dark:text-indigo-200 dark:hover:bg-indigo-500/30 dark:focus-visible:ring-offset-slate-800"
                         >
                             <Download className="mr-1.5 h-4 w-4" aria-hidden />
-                            Export DOCX
-                        </a>
+                            Export Options
+                        </button>
                         {canEdit && (
                             <>
                                 <Link href={route('funds.edit', fund.id)}>
@@ -861,6 +917,98 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
             </div>
 
             {/* Add/Edit Transaction Modal */}
+            <Modal show={showExportOptionsModal} onClose={closeExportOptions} maxWidth="xl">
+                <div className="p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">
+                                Export Transactions
+                            </h3>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                                Select one or more categories to include in the DOCX export.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeExportOptions}
+                            className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                            aria-label="Close export options"
+                        >
+                            <X className="h-4 w-4" aria-hidden />
+                        </button>
+                    </div>
+
+                    <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-600 dark:bg-slate-700/30">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                {selectedExportCategories.length} of {exportCategoryOptions.length} selected
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <SecondaryButton
+                                    type="button"
+                                    onClick={() => setSelectedExportCategories(exportCategoryOptions)}
+                                    disabled={exportCategoryOptions.length === 0}
+                                >
+                                    Select all
+                                </SecondaryButton>
+                                <SecondaryButton
+                                    type="button"
+                                    onClick={() => setSelectedExportCategories([])}
+                                    disabled={selectedExportCategories.length === 0}
+                                >
+                                    Clear
+                                </SecondaryButton>
+                            </div>
+                        </div>
+                    </div>
+
+                    {exportCategoryOptions.length > 0 ? (
+                        <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
+                            {exportCategoryOptions.map((category) => {
+                                const isSelected = selectedExportCategories.includes(category);
+
+                                return (
+                                    <label
+                                        key={category}
+                                        className="flex cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-indigo-400/70 dark:hover:bg-indigo-500/10"
+                                    >
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                            {category}
+                                        </span>
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-500 dark:bg-slate-700"
+                                            checked={isSelected}
+                                            onChange={() => toggleExportCategory(category)}
+                                        />
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-700/20 dark:text-slate-300">
+                            No categories found yet. You can still export all transactions.
+                        </div>
+                    )}
+
+                    <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
+                        <SecondaryButton type="button" onClick={closeExportOptions}>
+                            Cancel
+                        </SecondaryButton>
+                        <SecondaryButton type="button" onClick={exportAllCategories}>
+                            Export All
+                        </SecondaryButton>
+                        <PrimaryButton
+                            type="button"
+                            onClick={exportWithSelectedCategories}
+                            disabled={selectedExportCategories.length === 0}
+                        >
+                            Export Selected
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
             <Modal show={showAddModal} onClose={() => {
                 setShowAddModal(false);
                 setEditingTransaction(null);
