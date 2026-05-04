@@ -650,4 +650,66 @@ class FundAccessTest extends TestCase
 
         unlink($path);
     }
+
+    public function test_docx_export_sorts_transactions_by_date_added_oldest_first(): void
+    {
+        $owner = $this->createAdminUser();
+        $fund = Fund::create([
+            'name' => 'Sort Order Fund',
+            'description' => 'Export sort tests',
+            'created_by' => $owner->id,
+        ]);
+        $fund->members()->attach($owner->id, ['role' => 'owner']);
+
+        $oldestSender = Sender::create([
+            'name' => 'Oldest Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+        $latestSender = Sender::create([
+            'name' => 'Latest Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+
+        $oldestTransaction = Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $oldestSender->id,
+            'amount' => 100,
+            'date' => now()->subDays(2),
+            'notes' => 'First added',
+            'category' => 'Food',
+            'created_by' => $owner->id,
+        ]);
+        $latestTransaction = Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $latestSender->id,
+            'amount' => 200,
+            'date' => now()->subDay(),
+            'notes' => 'Last added',
+            'category' => 'Transport',
+            'created_by' => $owner->id,
+        ]);
+
+        $oldestTransaction->forceFill([
+            'created_at' => now()->subDays(3),
+            'updated_at' => now()->subDays(3),
+        ])->saveQuietly();
+        $latestTransaction->forceFill([
+            'created_at' => now()->subDay(),
+            'updated_at' => now()->subDay(),
+        ])->saveQuietly();
+
+        $path = app(FundTransactionDocxExporter::class)->export($fund, $owner, []);
+        $docxContents = $this->readDocxContents($path);
+
+        $oldestPosition = strpos($docxContents['document'], 'Oldest Sender');
+        $latestPosition = strpos($docxContents['document'], 'Latest Sender');
+
+        $this->assertNotFalse($oldestPosition);
+        $this->assertNotFalse($latestPosition);
+        $this->assertLessThan($latestPosition, $oldestPosition);
+
+        unlink($path);
+    }
 }
