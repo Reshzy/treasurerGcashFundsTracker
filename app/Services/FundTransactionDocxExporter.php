@@ -21,8 +21,8 @@ class FundTransactionDocxExporter
 
         $transactionsQuery = $fund->transactions()
             ->with(['sender.members'])
-            ->orderBy('date', 'desc')
-            ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc');
 
         $this->applyCategoryFilter($transactionsQuery, $normalizedCategories);
 
