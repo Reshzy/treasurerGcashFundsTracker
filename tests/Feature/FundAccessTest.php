@@ -19,6 +19,27 @@ class FundAccessTest extends TestCase
         return User::factory()->create(array_merge(['is_admin' => true], $attributes));
     }
 
+    /**
+     * @return array{document: string, header: string}
+     */
+    protected function readDocxContents(string $path): array
+    {
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($path) === true);
+
+        $documentXml = $zip->getFromName('word/document.xml');
+        $headerXml = $zip->getFromName('word/header1.xml');
+        $zip->close();
+
+        $this->assertIsString($documentXml);
+        $this->assertIsString($headerXml);
+
+        return [
+            'document' => $documentXml,
+            'header' => $headerXml,
+        ];
+    }
+
     public function test_viewer_can_view_fund_but_cannot_edit(): void
     {
         $owner = $this->createAdminUser();
@@ -431,6 +452,186 @@ class FundAccessTest extends TestCase
         $this->assertStringContainsString('Alpha Member', $documentXml);
         $this->assertStringContainsString('Beta Member', $documentXml);
         $this->assertStringContainsString('Personal Wallet', $documentXml);
+
+        unlink($path);
+    }
+
+    public function test_docx_export_filters_single_selected_category(): void
+    {
+        $owner = $this->createAdminUser();
+        $fund = Fund::create([
+            'name' => 'Category Filter Fund',
+            'description' => 'Export tests',
+            'created_by' => $owner->id,
+        ]);
+        $fund->members()->attach($owner->id, ['role' => 'owner']);
+
+        $foodSender = Sender::create([
+            'name' => 'Food Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+        $transportSender = Sender::create([
+            'name' => 'Transport Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $foodSender->id,
+            'amount' => 120,
+            'date' => now()->subDays(2),
+            'notes' => 'Lunch',
+            'category' => 'Food',
+            'created_by' => $owner->id,
+        ]);
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $transportSender->id,
+            'amount' => 260,
+            'date' => now()->subDay(),
+            'notes' => 'Taxi',
+            'category' => 'Transport',
+            'created_by' => $owner->id,
+        ]);
+
+        $path = app(FundTransactionDocxExporter::class)->export($fund, $owner, ['Food']);
+        $docxContents = $this->readDocxContents($path);
+
+        $this->assertStringContainsString('Categories: Food', $docxContents['header']);
+        $this->assertStringContainsString('Food Sender', $docxContents['document']);
+        $this->assertStringNotContainsString('Transport Sender', $docxContents['document']);
+
+        unlink($path);
+    }
+
+    public function test_docx_export_filters_multiple_selected_categories(): void
+    {
+        $owner = $this->createAdminUser();
+        $fund = Fund::create([
+            'name' => 'Multi Category Fund',
+            'description' => 'Export tests',
+            'created_by' => $owner->id,
+        ]);
+        $fund->members()->attach($owner->id, ['role' => 'owner']);
+
+        $foodSender = Sender::create([
+            'name' => 'Food Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+        $transportSender = Sender::create([
+            'name' => 'Transport Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+        $uncategorizedSender = Sender::create([
+            'name' => 'Uncategorized Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $foodSender->id,
+            'amount' => 130,
+            'date' => now()->subDays(3),
+            'notes' => 'Dinner',
+            'category' => 'Food',
+            'created_by' => $owner->id,
+        ]);
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $transportSender->id,
+            'amount' => 90,
+            'date' => now()->subDays(2),
+            'notes' => 'Train',
+            'category' => 'Transport',
+            'created_by' => $owner->id,
+        ]);
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $uncategorizedSender->id,
+            'amount' => 50,
+            'date' => now()->subDay(),
+            'notes' => 'Misc',
+            'category' => null,
+            'created_by' => $owner->id,
+        ]);
+
+        $path = app(FundTransactionDocxExporter::class)->export($fund, $owner, ['Food', 'Uncategorized']);
+        $docxContents = $this->readDocxContents($path);
+
+        $this->assertStringContainsString('Categories: Food, Uncategorized', $docxContents['header']);
+        $this->assertStringContainsString('Food Sender', $docxContents['document']);
+        $this->assertStringContainsString('Uncategorized Sender', $docxContents['document']);
+        $this->assertStringNotContainsString('Transport Sender', $docxContents['document']);
+
+        unlink($path);
+    }
+
+    public function test_docx_export_includes_all_transactions_when_no_categories_selected(): void
+    {
+        $owner = $this->createAdminUser();
+        $fund = Fund::create([
+            'name' => 'All Category Fund',
+            'description' => 'Export tests',
+            'created_by' => $owner->id,
+        ]);
+        $fund->members()->attach($owner->id, ['role' => 'owner']);
+
+        $foodSender = Sender::create([
+            'name' => 'Food Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+        $transportSender = Sender::create([
+            'name' => 'Transport Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+        $uncategorizedSender = Sender::create([
+            'name' => 'Uncategorized Sender',
+            'type' => 'individual',
+            'created_by' => $owner->id,
+        ]);
+
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $foodSender->id,
+            'amount' => 75,
+            'date' => now()->subDays(3),
+            'notes' => 'Breakfast',
+            'category' => 'Food',
+            'created_by' => $owner->id,
+        ]);
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $transportSender->id,
+            'amount' => 210,
+            'date' => now()->subDays(2),
+            'notes' => 'Bus',
+            'category' => 'Transport',
+            'created_by' => $owner->id,
+        ]);
+        Transaction::create([
+            'fund_id' => $fund->id,
+            'sender_id' => $uncategorizedSender->id,
+            'amount' => 40,
+            'date' => now()->subDay(),
+            'notes' => 'Snacks',
+            'category' => null,
+            'created_by' => $owner->id,
+        ]);
+
+        $path = app(FundTransactionDocxExporter::class)->export($fund, $owner, []);
+        $docxContents = $this->readDocxContents($path);
+
+        $this->assertStringContainsString('Categories: All categories', $docxContents['header']);
+        $this->assertStringContainsString('Food Sender', $docxContents['document']);
+        $this->assertStringContainsString('Transport Sender', $docxContents['document']);
+        $this->assertStringContainsString('Uncategorized Sender', $docxContents['document']);
 
         unlink($path);
     }
