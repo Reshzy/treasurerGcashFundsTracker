@@ -163,6 +163,19 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
         }
     };
 
+    const handleSelectIndividualSavedName = (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) {
+            return;
+        }
+
+        setNewSenderName(trimmed);
+        notifySenderChange({
+            name: trimmed,
+            type: 'individual',
+        });
+    };
+
     const handleNewSenderUpdate = () => {
         if (senderType === 'individual') {
             if (newSenderName.trim()) {
@@ -279,6 +292,32 @@ export default function SenderSelector({ senders = [], savedMemberNames = [], va
                     placeholder={senderType === 'group' ? 'Enter group name...' : 'Enter sender name...'}
                 />
             </div>
+
+            {senderType === 'individual' && savedMemberNames.length > 0 && (
+                <div>
+                    <p className="mb-1.5 text-xs text-gray-500 dark:text-slate-400">Saved names (click to use)</p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {savedMemberNames.map((savedName) => {
+                            const isActive = newSenderName.trim().toLowerCase() === savedName.trim().toLowerCase();
+
+                            return (
+                                <button
+                                    key={savedName}
+                                    type="button"
+                                    onClick={() => handleSelectIndividualSavedName(savedName)}
+                                    aria-pressed={isActive}
+                                    className={`rounded-full border px-2.5 py-1 text-xs transition ${isActive
+                                            ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/60 dark:bg-indigo-500/20 dark:text-indigo-200'
+                                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500'
+                                        }`}
+                                >
+                                    {savedName}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Group Members */}
             {senderType === 'group' && (
