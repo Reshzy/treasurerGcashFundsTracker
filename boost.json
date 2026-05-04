@@ -3,7 +3,9 @@
         "cursor"
     ],
     "cloud": false,
-    "mcp": true,
-    "nightwatch": false,
-    "sail": false
+    "skills": [
+        "laravel-best-practices",
+        "inertia-react-development",
+        "tailwindcss-development"
+    ]
 }
