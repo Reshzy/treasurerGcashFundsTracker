@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ClientPagination from '@/Components/ClientPagination';
 import TransactionList from '@/Components/TransactionList';
@@ -9,9 +9,21 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import Modal from '@/Components/Modal';
-import { ArrowLeft, BarChart3, ChevronDown, ChevronUp, Download, LayoutGrid, PieChart, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, ChevronDown, ChevronUp, Download, PieChart, X } from 'lucide-react';
 import axios from 'axios';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import {
+    ArcElement,
+    BarElement,
+    CategoryScale,
+    Chart as ChartJS,
+    Legend,
+    LinearScale,
+    Tooltip,
+} from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
 const selectClasses =
     'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100';
@@ -62,357 +74,240 @@ function normalizeCategoryTotals(categoryTotals) {
     }));
 }
 
-function CategoryTotalsBarChart({ categoryTotals, formatCurrency }) {
-    if (categoryTotals.length === 0) {
-        return (
-            <div className="rounded-lg border border-dashed border-slate-300/80 bg-slate-50/60 p-6 text-center dark:border-slate-600 dark:bg-slate-800/30">
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No category data available yet.
-                </p>
-            </div>
-        );
-    }
+const categoryChartPalette = [
+    '#4f46e5',
+    '#0284c7',
+    '#0ea5e9',
+    '#10b981',
+    '#f59e0b',
+    '#ef4444',
+    '#a855f7',
+    '#6366f1',
+];
 
-    const normalizedData = normalizeCategoryTotals(categoryTotals);
-    const totals = normalizedData.map((item) => item.total);
-    const maxValue = Math.max(...totals, 0);
-    const minValue = Math.min(...totals, 0);
-    const range = maxValue - minValue || 1;
-    const width = 120;
-    const height = 100;
-    const paddingX = 8;
-    const paddingY = 10;
-    const plotWidth = width - (paddingX * 2);
-    const plotHeight = height - (paddingY * 2);
-    const zeroY = paddingY + (((maxValue - 0) / range) * plotHeight);
-    const columnWidth = plotWidth / normalizedData.length;
-    const barWidth = Math.max(Math.min(columnWidth * 0.64, 16), 6);
+function useIsDarkMode() {
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        if (typeof document === 'undefined') {
+            return false;
+        }
 
-    const getY = (value) => {
-        return paddingY + (((maxValue - value) / range) * plotHeight);
-    };
-
-    const bars = normalizedData.map((item, index) => {
-        const centerX = paddingX + (columnWidth * index) + (columnWidth / 2);
-        const y = getY(item.total);
-        const barY = item.total >= 0 ? y : zeroY;
-        const barHeight = Math.max(Math.abs(zeroY - y), item.total === 0 ? 1.2 : 1.6);
-
-        return {
-            ...item,
-            x: centerX - (barWidth / 2),
-            y: barY,
-            height: barHeight,
-        };
+        return document.documentElement.classList.contains('dark');
     });
 
-    const [activeBarIndex, setActiveBarIndex] = useState(null);
-    const activeBar = activeBarIndex !== null ? bars[activeBarIndex] : null;
+    useEffect(() => {
+        if (typeof document === 'undefined') {
+            return undefined;
+        }
 
+        const root = document.documentElement;
+        const observer = new MutationObserver(() => {
+            setIsDarkMode(root.classList.contains('dark'));
+        });
+        observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+        return () => observer.disconnect();
+    }, []);
+
+    return isDarkMode;
+}
+
+function CategoryChartEmptyState({ message }) {
     return (
-        <div className="space-y-3">
-            <div className="rounded-xl border border-slate-200/80 bg-white/70 p-4 dark:border-slate-600/80 dark:bg-slate-800/30">
-                <div className="relative h-56 w-full">
-                    <svg
-                        viewBox={`0 0 ${width} ${height}`}
-                        className="h-full w-full"
-                        role="img"
-                        aria-label="Bar chart of category totals"
-                        preserveAspectRatio="none"
-                    >
-                        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-                            const y = paddingY + (plotHeight * ratio);
-
-                            return (
-                                <line
-                                    key={`grid-${ratio}`}
-                                    x1={paddingX}
-                                    x2={paddingX + plotWidth}
-                                    y1={y}
-                                    y2={y}
-                                    stroke="rgb(148 163 184 / 0.24)"
-                                    strokeDasharray="1.6 1.8"
-                                    vectorEffect="non-scaling-stroke"
-                                />
-                            );
-                        })}
-
-                        <line
-                            x1={paddingX}
-                            x2={paddingX + plotWidth}
-                            y1={zeroY}
-                            y2={zeroY}
-                            stroke="rgb(71 85 105 / 0.6)"
-                            strokeWidth="1"
-                            vectorEffect="non-scaling-stroke"
-                        />
-
-                        {bars.map((bar, index) => {
-                            const isNegative = bar.total < 0;
-                            const isActive = activeBarIndex === index;
-                            const accessibleText = `${bar.category}: ${formatCurrency(bar.total)} from ${bar.transactionCount} transaction${bar.transactionCount === 1 ? '' : 's'}`;
-
-                            return (
-                                <rect
-                                    key={`bar-${bar.category}-${index}`}
-                                    x={bar.x}
-                                    y={bar.y}
-                                    width={barWidth}
-                                    height={bar.height}
-                                    rx="1.3"
-                                    fill={isNegative ? 'rgb(248 113 113 / 0.86)' : 'rgb(79 70 229 / 0.86)'}
-                                    stroke={isActive ? 'rgb(15 23 42 / 0.85)' : 'rgb(255 255 255 / 0.45)'}
-                                    strokeWidth={isActive ? 1.4 : 0.5}
-                                    className={`cursor-pointer transition-[filter,opacity,stroke-width] duration-150 focus:outline-none ${isActive ? 'opacity-100 [filter:brightness(1.08)]' : 'opacity-90 hover:opacity-100 hover:[filter:brightness(1.05)] focus:opacity-100'}`}
-                                    onMouseEnter={() => setActiveBarIndex(index)}
-                                    onMouseLeave={() => setActiveBarIndex(null)}
-                                    onFocus={() => setActiveBarIndex(index)}
-                                    onBlur={() => setActiveBarIndex(null)}
-                                    tabIndex={0}
-                                    role="img"
-                                    aria-label={accessibleText}
-                                >
-                                    <title>{accessibleText}</title>
-                                </rect>
-                            );
-                        })}
-                    </svg>
-                </div>
-
-                <div
-                    className="mt-3 min-h-12 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-sm text-slate-700 dark:border-slate-600/80 dark:bg-slate-700/30 dark:text-slate-200"
-                    role="status"
-                    aria-live="polite"
-                >
-                    {activeBar ? (
-                        <p>
-                            <span className="font-semibold">{activeBar.category}</span>
-                            {' - '}
-                            <span>{formatCurrency(activeBar.total)}</span>
-                            {' '}
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                                ({activeBar.transactionCount} txn{activeBar.transactionCount === 1 ? '' : 's'})
-                            </span>
-                        </p>
-                    ) : (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Hover or focus a bar to view category totals.
-                        </p>
-                    )}
-                </div>
-
-                <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span>Min: {formatCurrency(minValue)}</span>
-                    <span>Max: {formatCurrency(maxValue)}</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {bars.map((item, index) => (
-                    <div
-                        key={`bar-item-${item.category}-${index}`}
-                        className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50 p-3 dark:border-slate-600/80 dark:bg-slate-700/30"
-                    >
-                        <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
-                            {item.category}
-                        </p>
-                        <div className="ml-3 text-right">
-                            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {formatCurrency(item.total)}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                {item.transactionCount} txn{item.transactionCount === 1 ? '' : 's'}
-                            </p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+        <div className="rounded-lg border border-dashed border-slate-300/80 bg-slate-50/60 p-6 text-center dark:border-slate-600 dark:bg-slate-800/30">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+                {message}
+            </p>
         </div>
     );
 }
 
-function describePieArc(cx, cy, radius, startAngle, endAngle) {
-    const startX = cx + (radius * Math.cos(startAngle));
-    const startY = cy + (radius * Math.sin(startAngle));
-    const endX = cx + (radius * Math.cos(endAngle));
-    const endY = cy + (radius * Math.sin(endAngle));
-    const largeArcFlag = endAngle - startAngle > Math.PI ? 1 : 0;
+function CategoryTotalsBarChart({ categoryTotals, formatCurrency, isDarkMode }) {
+    const normalizedData = useMemo(() => normalizeCategoryTotals(categoryTotals), [categoryTotals]);
 
-    return `M ${cx} ${cy} L ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
-}
-
-function CategoryTotalsPieChart({ categoryTotals, formatCurrency }) {
-    if (categoryTotals.length === 0) {
-        return (
-            <div className="rounded-lg border border-dashed border-slate-300/80 bg-slate-50/60 p-6 text-center dark:border-slate-600 dark:bg-slate-800/30">
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No category data available yet.
-                </p>
-            </div>
-        );
+    if (normalizedData.length === 0) {
+        return <CategoryChartEmptyState message="No category data available yet." />;
     }
 
-    const normalizedData = normalizeCategoryTotals(categoryTotals);
-    const positiveData = normalizedData.filter((item) => item.total > 0);
-    const positiveTotal = positiveData.reduce((sum, item) => sum + item.total, 0);
-    const piePalette = [
-        'rgb(79 70 229 / 0.9)',
-        'rgb(2 132 199 / 0.9)',
-        'rgb(14 165 233 / 0.9)',
-        'rgb(16 185 129 / 0.9)',
-        'rgb(245 158 11 / 0.9)',
-        'rgb(239 68 68 / 0.9)',
-        'rgb(168 85 247 / 0.9)',
-        'rgb(99 102 241 / 0.9)',
-    ];
+    const chartTextColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const chartGridColor = isDarkMode ? 'rgba(148, 163, 184, 0.22)' : 'rgba(148, 163, 184, 0.28)';
+    const barBorderColor = isDarkMode ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.95)';
+    const labels = normalizedData.map((item) => item.category);
 
-    let currentAngle = -Math.PI / 2;
-    const slices = positiveData.map((item, index) => {
-        const ratio = item.total / positiveTotal;
-        const sweep = ratio * Math.PI * 2;
-        const startAngle = currentAngle;
-        const endAngle = currentAngle + sweep;
-        currentAngle = endAngle;
-
+    const data = useMemo(() => {
         return {
-            ...item,
-            ratio,
-            color: piePalette[index % piePalette.length],
-            startAngle,
-            endAngle,
+            labels,
+            datasets: [
+                {
+                    label: 'Category total',
+                    data: normalizedData.map((item) => item.total),
+                    backgroundColor: normalizedData.map((item) => (item.total < 0 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(79, 70, 229, 0.85)')),
+                    borderColor: normalizedData.map(() => barBorderColor),
+                    borderWidth: 1.5,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                    maxBarThickness: 42,
+                },
+            ],
         };
-    });
+    }, [barBorderColor, labels, normalizedData]);
 
-    const [activeSliceIndex, setActiveSliceIndex] = useState(null);
-    const activeSlice = activeSliceIndex !== null ? slices[activeSliceIndex] : null;
+    const options = useMemo(() => {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 350 },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.92)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    borderWidth: 0,
+                    padding: 12,
+                    callbacks: {
+                        title: (items) => items[0]?.label ?? '',
+                        label: (context) => {
+                            const item = normalizedData[context.dataIndex];
+                            if (!item) {
+                                return '';
+                            }
+
+                            return `${formatCurrency(item.total)} · ${item.transactionCount} txn${item.transactionCount === 1 ? '' : 's'}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: chartTextColor,
+                        maxRotation: 0,
+                        autoSkip: false,
+                        callback: (_, index) => {
+                            const label = labels[index] ?? '';
+                            return label.length > 16 ? `${label.slice(0, 16)}...` : label;
+                        },
+                    },
+                    grid: {
+                        display: false,
+                    },
+                },
+                y: {
+                    ticks: {
+                        color: chartTextColor,
+                        maxTicksLimit: 6,
+                        callback: (value) => formatCurrency(Number(value)),
+                    },
+                    grid: {
+                        color: chartGridColor,
+                    },
+                },
+            },
+        };
+    }, [chartGridColor, chartTextColor, formatCurrency, isDarkMode, labels, normalizedData]);
 
     return (
-        <div className="space-y-3">
-            <div className="rounded-xl border border-slate-200/80 bg-white/70 p-4 dark:border-slate-600/80 dark:bg-slate-800/30">
-                {positiveTotal > 0 ? (
-                    <div className="mx-auto h-56 w-full max-w-sm">
-                        <svg
-                            viewBox="0 0 120 120"
-                            className="h-full w-full"
-                            role="img"
-                            aria-label="Pie chart of positive category totals"
-                        >
-                            {slices.length === 1 ? (
-                                <circle
-                                    cx="60"
-                                    cy="60"
-                                    r="42"
-                                    fill={slices[0].color}
-                                    stroke="white"
-                                    strokeWidth="1.8"
-                                    className="cursor-pointer transition-[filter] duration-150 hover:[filter:brightness(1.06)] focus:[filter:brightness(1.08)] focus:outline-none"
-                                    tabIndex={0}
-                                    role="img"
-                                    aria-label={`${slices[0].category}: ${formatCurrency(slices[0].total)} (100%), ${slices[0].transactionCount} transaction${slices[0].transactionCount === 1 ? '' : 's'}`}
-                                    onMouseEnter={() => setActiveSliceIndex(0)}
-                                    onMouseLeave={() => setActiveSliceIndex(null)}
-                                    onFocus={() => setActiveSliceIndex(0)}
-                                    onBlur={() => setActiveSliceIndex(null)}
-                                >
-                                    <title>{`${slices[0].category}: ${formatCurrency(slices[0].total)} (100%)`}</title>
-                                </circle>
-                            ) : (
-                                slices.map((slice, index) => {
-                                    const isActive = activeSliceIndex === index;
-                                    const accessibleText = `${slice.category}: ${formatCurrency(slice.total)} (${(slice.ratio * 100).toFixed(1)}%), ${slice.transactionCount} transaction${slice.transactionCount === 1 ? '' : 's'}`;
-
-                                    return (
-                                        <path
-                                            key={`slice-${slice.category}-${index}`}
-                                            d={describePieArc(60, 60, 42, slice.startAngle, slice.endAngle)}
-                                            fill={slice.color}
-                                            stroke={isActive ? 'rgb(15 23 42 / 0.85)' : 'white'}
-                                            strokeWidth={isActive ? '2.4' : '1.8'}
-                                            className="cursor-pointer transition-[filter,stroke-width] duration-150 hover:[filter:brightness(1.06)] focus:[filter:brightness(1.08)] focus:outline-none"
-                                            tabIndex={0}
-                                            role="img"
-                                            aria-label={accessibleText}
-                                            onMouseEnter={() => setActiveSliceIndex(index)}
-                                            onMouseLeave={() => setActiveSliceIndex(null)}
-                                            onFocus={() => setActiveSliceIndex(index)}
-                                            onBlur={() => setActiveSliceIndex(null)}
-                                        >
-                                            <title>{accessibleText}</title>
-                                        </path>
-                                    );
-                                })
-                            )}
-                            <circle cx="60" cy="60" r="20" fill="white" className="dark:fill-slate-800" />
-                        </svg>
-                    </div>
-                ) : (
-                    <div className="rounded-lg border border-dashed border-slate-300/80 bg-slate-50/60 p-6 text-center dark:border-slate-600 dark:bg-slate-800/30">
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Pie chart requires at least one positive category total.
-                        </p>
-                    </div>
-                )}
-
-                {positiveTotal > 0 && (
-                    <div
-                        className="mt-3 min-h-12 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-sm text-slate-700 dark:border-slate-600/80 dark:bg-slate-700/30 dark:text-slate-200"
-                        role="status"
-                        aria-live="polite"
-                    >
-                        {activeSlice ? (
-                            <p>
-                                <span className="font-semibold">{activeSlice.category}</span>
-                                {' - '}
-                                <span>{formatCurrency(activeSlice.total)}</span>
-                                {' '}
-                                <span className="text-xs text-slate-500 dark:text-slate-400">
-                                    ({(activeSlice.ratio * 100).toFixed(1)}%, {activeSlice.transactionCount} txn{activeSlice.transactionCount === 1 ? '' : 's'})
-                                </span>
-                            </p>
-                        ) : (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Hover or focus a pie slice to view category totals.
-                            </p>
-                        )}
-                    </div>
-                )}
+        <div className="rounded-xl border border-slate-200/80 bg-white/70 p-4 dark:border-slate-600/80 dark:bg-slate-800/30">
+            <div className="relative h-72 w-full sm:h-80">
+                <Bar
+                    data={data}
+                    options={options}
+                    aria-label="Bar chart of category totals"
+                    role="img"
+                />
             </div>
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                Positive totals are shown in indigo, and negative totals are highlighted in red.
+            </p>
+        </div>
+    );
+}
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {normalizedData.map((item, index) => {
-                    const ratio = positiveTotal > 0 && item.total > 0 ? (item.total / positiveTotal) * 100 : null;
+function CategoryTotalsPieChart({ categoryTotals, formatCurrency, isDarkMode }) {
+    const normalizedData = useMemo(() => normalizeCategoryTotals(categoryTotals), [categoryTotals]);
 
-                    return (
-                        <div
-                            key={`pie-item-${item.category}-${index}`}
-                            className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50 p-3 dark:border-slate-600/80 dark:bg-slate-700/30"
-                        >
-                            <div className="flex min-w-0 items-center gap-2">
-                                <span
-                                    className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                                    style={{
-                                        backgroundColor: item.total > 0
-                                            ? piePalette[positiveData.findIndex((entry) => entry.category === item.category) % piePalette.length]
-                                            : 'rgb(148 163 184 / 0.8)',
-                                    }}
-                                    aria-hidden
-                                />
-                                <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
-                                    {item.category}
-                                </p>
-                            </div>
-                            <div className="ml-3 text-right">
-                                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {formatCurrency(item.total)}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {ratio !== null ? `${ratio.toFixed(1)}% of pie` : 'Excluded from pie'}
-                                </p>
-                            </div>
-                        </div>
-                    );
-                })}
+    if (normalizedData.length === 0) {
+        return <CategoryChartEmptyState message="No category data available yet." />;
+    }
+
+    const positiveData = normalizedData.filter((item) => item.total > 0);
+    const positiveTotal = positiveData.reduce((sum, item) => sum + item.total, 0);
+
+    if (positiveData.length === 0 || positiveTotal <= 0) {
+        return <CategoryChartEmptyState message="Pie chart requires at least one positive category total." />;
+    }
+
+    const chartTextColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const chartBorderColor = isDarkMode ? '#0f172a' : '#ffffff';
+    const backgroundColors = positiveData.map((_, index) => categoryChartPalette[index % categoryChartPalette.length]);
+
+    const data = useMemo(() => {
+        return {
+            labels: positiveData.map((item) => item.category),
+            datasets: [
+                {
+                    data: positiveData.map((item) => item.total),
+                    backgroundColor: backgroundColors,
+                    borderColor: chartBorderColor,
+                    borderWidth: 2,
+                    hoverOffset: 8,
+                },
+            ],
+        };
+    }, [backgroundColors, chartBorderColor, positiveData]);
+
+    const options = useMemo(() => {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 350 },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: chartTextColor,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 10,
+                        padding: 16,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.92)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    borderWidth: 0,
+                    padding: 12,
+                    callbacks: {
+                        label: (context) => {
+                            const item = positiveData[context.dataIndex];
+                            if (!item) {
+                                return '';
+                            }
+
+                            const ratio = (item.total / positiveTotal) * 100;
+                            return `${formatCurrency(item.total)} (${ratio.toFixed(1)}%) · ${item.transactionCount} txn${item.transactionCount === 1 ? '' : 's'}`;
+                        },
+                    },
+                },
+            },
+        };
+    }, [chartTextColor, formatCurrency, isDarkMode, positiveData, positiveTotal]);
+
+    return (
+        <div className="rounded-xl border border-slate-200/80 bg-white/70 p-4 dark:border-slate-600/80 dark:bg-slate-800/30">
+            <div className="relative mx-auto h-80 w-full max-w-2xl sm:h-96">
+                <Pie
+                    data={data}
+                    options={options}
+                    aria-label="Pie chart of positive category totals"
+                    role="img"
+                />
             </div>
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                Pie view shows only positive category totals to preserve percentage accuracy.
+            </p>
         </div>
     );
 }
@@ -465,9 +360,10 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
     const [createdTo, setCreatedTo] = useState('');
     const [amountMin, setAmountMin] = useState('');
     const [amountMax, setAmountMax] = useState('');
-    const [categoryViewMode, setCategoryViewMode] = useState('cards');
+    const [categoryViewMode, setCategoryViewMode] = useState('bar');
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage] = useState(12);
+    const isDarkMode = useIsDarkMode();
 
     const allTransactions = Array.isArray(transactions) ? transactions : [];
     const categoryTotals = Array.isArray(fund.category_totals) ? fund.category_totals : [];
@@ -711,22 +607,9 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                                     <div className="mb-4 flex items-center justify-end">
                                         <div
                                             role="group"
-                                            aria-label="Category breakdown view mode"
+                                            aria-label="Category breakdown chart type"
                                             className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-600 dark:bg-slate-700/40"
                                         >
-                                            <button
-                                                type="button"
-                                                onClick={() => setCategoryViewMode('cards')}
-                                                aria-pressed={categoryViewMode === 'cards'}
-                                                aria-label="Show category totals as cards"
-                                                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 ${categoryViewMode === 'cards'
-                                                        ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-300'
-                                                        : 'text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100'
-                                                    }`}
-                                            >
-                                                <LayoutGrid className="h-4 w-4" aria-hidden />
-                                                <span className="hidden sm:inline">Cards</span>
-                                            </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setCategoryViewMode('bar')}
@@ -757,17 +640,11 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                                     </div>
                                 </div>
 
-                                {categoryViewMode === 'cards' && (
-                                    <CategoryTotalsCards
-                                        categoryTotals={categoryTotals}
-                                        formatCurrency={formatCurrency}
-                                    />
-                                )}
-
                                 {categoryViewMode === 'bar' && (
                                     <CategoryTotalsBarChart
                                         categoryTotals={categoryTotals}
                                         formatCurrency={formatCurrency}
+                                        isDarkMode={isDarkMode}
                                     />
                                 )}
 
@@ -775,8 +652,19 @@ export default function Show({ fund, transactions, senders, savedMemberNames = [
                                     <CategoryTotalsPieChart
                                         categoryTotals={categoryTotals}
                                         formatCurrency={formatCurrency}
+                                        isDarkMode={isDarkMode}
                                     />
                                 )}
+
+                                <div className="mt-4 space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                        Category Summary
+                                    </p>
+                                    <CategoryTotalsCards
+                                        categoryTotals={categoryTotals}
+                                        formatCurrency={formatCurrency}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
