@@ -63,6 +63,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     // Funds routes
     Route::resource('funds', FundController::class);
+    Route::get('/funds/{fund}/transactions/export', [FundController::class, 'exportTransactions'])->name('funds.transactions.export');
     Route::post('/funds/{fund}/members', [FundController::class, 'addMember'])->name('funds.members.add');
     Route::delete('/funds/{fund}/members/{user}', [FundController::class, 'removeMember'])->name('funds.members.remove');
 

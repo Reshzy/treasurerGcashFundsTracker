@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Fund;
 use App\Models\Sender;
 use App\Models\User;
+use App\Services\FundTransactionDocxExporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FundController extends Controller
 {
@@ -102,11 +105,13 @@ class FundController extends Controller
             abort(403, 'You do not have access to this fund.');
         }
 
-        $transactions = $fund->transactions()
+        $fundTransactions = $fund->transactions()
             ->with(['sender.members', 'creator'])
             ->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->get()
+            ->get();
+
+        $transactions = $fundTransactions
             ->map(function ($transaction) use ($user) {
                 return [
                     'id' => $transaction->id,
@@ -128,6 +133,27 @@ class FundController extends Controller
                     'created_at_formatted' => $transaction->created_at->format('M j, Y g:i A'),
                 ];
             })
+            ->values()
+            ->all();
+
+        $categoryTotals = $fundTransactions
+            ->groupBy(function ($transaction) {
+                $category = trim((string) $transaction->category);
+
+                if ($category === '') {
+                    return 'Uncategorized';
+                }
+
+                return $category;
+            })
+            ->map(function ($categoryTransactions, $category) {
+                return [
+                    'category' => $category,
+                    'total' => (float) $categoryTransactions->sum('amount'),
+                    'transaction_count' => $categoryTransactions->count(),
+                ];
+            })
+            ->sortByDesc('total')
             ->values()
             ->all();
 
@@ -164,7 +190,8 @@ class FundController extends Controller
                 'id' => $fund->id,
                 'name' => $fund->name,
                 'description' => $fund->description,
-                'total' => $fund->total,
+                'total' => (float) $fundTransactions->sum('amount'),
+                'category_totals' => $categoryTotals,
                 'creator' => $fund->creator->name,
                 'members' => $fund->members->map(fn ($member) => [
                     'id' => $member->id,
@@ -318,5 +345,27 @@ class FundController extends Controller
         $fund->members()->detach($userId);
 
         return redirect()->back()->with('success', 'Member removed successfully.');
+    }
+
+    public function exportTransactions(Fund $fund, FundTransactionDocxExporter $exporter): BinaryFileResponse
+    {
+        $user = Auth::user();
+        $hasAccess = $fund->members()->where('user_id', $user->id)->exists()
+            || $fund->created_by === $user->id;
+
+        if (! $hasAccess) {
+            abort(403, 'You do not have access to this fund.');
+        }
+
+        $path = $exporter->export($fund, $user);
+        $safeFundName = Str::slug($fund->name);
+        $filenamePrefix = $safeFundName !== '' ? $safeFundName : 'fund';
+        $filename = $filenamePrefix.'-transactions-'.now()->format('Ymd').'.docx';
+
+        return response()->download(
+            $path,
+            $filename,
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+        )->deleteFileAfterSend(true);
     }
 }
