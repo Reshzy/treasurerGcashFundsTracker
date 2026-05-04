@@ -107,6 +107,9 @@ class FundTransactionDocxExporter
 
     private function addBody(PhpWord $document, Section $section, Fund $fund, array $transactions): void
     {
+        $transactionEntryCount = $this->calculateTransactionEntryCount($transactions);
+        $totalPaidAmount = $this->calculateTotalPaidAmount($transactions);
+
         $section->addText(
             sprintf('%s - Transactions Export', $fund->name),
             ['bold' => true, 'size' => 18, 'color' => '111827'],
@@ -116,6 +119,21 @@ class FundTransactionDocxExporter
             sprintf('Exported at %s', now()->format('M j, Y g:i A')),
             ['italic' => true, 'size' => 9, 'color' => '6B7280'],
             ['spaceAfter' => 220]
+        );
+        $section->addText(
+            'Summary',
+            ['bold' => true, 'size' => 11, 'color' => '111827'],
+            ['spaceAfter' => 80]
+        );
+        $section->addText(
+            sprintf('Total paid amount: %s', $this->formatAmount($totalPaidAmount)),
+            ['size' => 10, 'color' => '1F2937'],
+            ['spaceAfter' => 40]
+        );
+        $section->addText(
+            sprintf('Total transactions: %d', $transactionEntryCount),
+            ['size' => 10, 'color' => '1F2937'],
+            ['spaceAfter' => 180]
         );
 
         if ($transactions === []) {
@@ -144,29 +162,70 @@ class FundTransactionDocxExporter
         $table = $section->addTable('FundTransactionsExportTable');
         $headerTextStyle = ['bold' => true, 'size' => 10, 'color' => '111827'];
         $cellTextStyle = ['size' => 9, 'color' => '1F2937'];
+        $tableCellParagraphStyle = ['spaceBefore' => 0, 'spaceAfter' => 0];
 
         $table->addRow();
-        $table->addCell(2500)->addText('Transaction Name', $headerTextStyle);
-        $table->addCell(1500)->addText('Type', $headerTextStyle);
-        $table->addCell(2800)->addText('Group Name', $headerTextStyle);
-        $table->addCell(3500)->addText('Group Members', $headerTextStyle);
+        $this->addCellText($table->addCell(1100), sprintf('Per Transaction (%d)', $transactionEntryCount), $headerTextStyle, $tableCellParagraphStyle);
+        $this->addCellText($table->addCell(2200), 'Transaction Name', $headerTextStyle, $tableCellParagraphStyle);
+        $this->addCellText($table->addCell(1200), 'Type', $headerTextStyle, $tableCellParagraphStyle);
+        $this->addCellText($table->addCell(1700), 'Paid Amount', $headerTextStyle, $tableCellParagraphStyle);
+        $this->addCellText($table->addCell(3000), 'Group Members', $headerTextStyle, $tableCellParagraphStyle);
+        $this->addCellText($table->addCell(2200), 'Date Added (MM-DD-YYYY)', $headerTextStyle, $tableCellParagraphStyle);
 
-        foreach ($transactions as $transaction) {
+        foreach ($transactions as $index => $transaction) {
             $sender = $transaction->sender;
             $isGroup = $sender !== null && $sender->type === 'group';
             $groupMembers = $isGroup
                 ? $sender->members->pluck('name')->filter()->values()->all()
                 : [];
-            $groupMembersText = $isGroup
-                ? ($groupMembers !== [] ? implode(', ', $groupMembers) : 'No members listed')
-                : 'N/A';
+            $dateAdded = $transaction->created_at?->format('m-d-Y') ?? 'N/A';
 
             $table->addRow();
-            $table->addCell(2500)->addText($sender?->name ?? 'Unknown Sender', $cellTextStyle);
-            $table->addCell(1500)->addText($isGroup ? 'Group' : 'Individual', $cellTextStyle);
-            $table->addCell(2800)->addText($isGroup ? ($sender?->name ?? 'Unnamed Group') : 'N/A', $cellTextStyle);
-            $table->addCell(3500)->addText($groupMembersText, $cellTextStyle);
+            $this->addCellText($table->addCell(1100), (string) ($index + 1), $cellTextStyle, $tableCellParagraphStyle);
+            $this->addCellText($table->addCell(2200), $sender?->name ?? 'Unknown Sender', $cellTextStyle, $tableCellParagraphStyle);
+            $this->addCellText($table->addCell(1200), $isGroup ? 'Group' : 'Individual', $cellTextStyle, $tableCellParagraphStyle);
+            $this->addCellText(
+                $table->addCell(1700),
+                $this->formatAmount($transaction->amount),
+                $cellTextStyle,
+                ['alignment' => Jc::RIGHT, 'spaceBefore' => 0, 'spaceAfter' => 0]
+            );
+            $groupMembersCell = $table->addCell(3000);
+            if (! $isGroup) {
+                $this->addCellText($groupMembersCell, 'N/A', $cellTextStyle, $tableCellParagraphStyle);
+            } elseif ($groupMembers === []) {
+                $this->addCellText($groupMembersCell, 'No members listed', $cellTextStyle, $tableCellParagraphStyle);
+            } else {
+                $textRun = $groupMembersCell->addTextRun($tableCellParagraphStyle);
+                foreach ($groupMembers as $memberIndex => $memberName) {
+                    if ($memberIndex > 0) {
+                        $textRun->addTextBreak();
+                    }
+                    $textRun->addText('• '.$memberName, $cellTextStyle);
+                }
+            }
+            $this->addCellText($table->addCell(2200), $dateAdded, $cellTextStyle, $tableCellParagraphStyle);
         }
+    }
+
+    private function calculateTransactionEntryCount(array $transactions): int
+    {
+        return collect($transactions)->count();
+    }
+
+    private function calculateTotalPaidAmount(array $transactions): float
+    {
+        return (float) collect($transactions)->sum(fn ($transaction) => (float) $transaction->amount);
+    }
+
+    private function formatAmount(float|int|string|null $amount): string
+    {
+        return '₱'.number_format((float) $amount, 2);
+    }
+
+    private function addCellText($cell, string $text, array $fontStyle, array $paragraphStyle): void
+    {
+        $cell->addText($text, $fontStyle, $paragraphStyle);
     }
 
     /**
